@@ -1,0 +1,5 @@
+[plugin]
+description = "dokku universal docker image service plugin"
+version = "0.1.0"
+
+[plugin.config]
