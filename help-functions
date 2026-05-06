@@ -120,3 +120,10 @@ generic:exec <service> [-i] [-t] <cmd> [args...]
 Run a command inside the running container. Exit code propagates.
 EOF
 }
+
+cmd_logs_help() { cat <<EOF
+generic:logs <service> [-t] [-n N] [-f]
+
+Show container logs. Flags: -t (timestamps), -n N (last N lines), -f (follow).
+EOF
+}

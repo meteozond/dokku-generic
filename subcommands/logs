@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+shift
+SERVICE=""
+EXTRA_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t|--timestamps) EXTRA_ARGS+=("--timestamps"); shift ;;
+    -n|--num) EXTRA_ARGS+=("--tail" "$2"); shift 2 ;;
+    -f|--follow) EXTRA_ARGS+=("--follow"); shift ;;
+    *)
+      if [[ -z "$SERVICE" ]]; then SERVICE="$1"; else dokku_log_fail "Unexpected: $1"; fi
+      shift ;;
+  esac
+done
+
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a valid name for the service"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+
+CONTAINER="$(service_container_name "$SERVICE")"
+
+exec "$DOCKER_BIN" container logs "${EXTRA_ARGS[@]}" "$CONTAINER"
