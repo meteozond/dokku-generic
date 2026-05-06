@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -eo pipefail
+PLUGIN_BASE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+while IFS= read -r service; do
+  [[ -z "$service" ]] && continue
+  echo "$service"
+done < <(fn-services-list)
