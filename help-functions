@@ -113,3 +113,10 @@ generic:enter <service>
 Drop into interactive shell inside the running container. Tries bash, falls back to sh.
 EOF
 }
+
+cmd_exec_help() { cat <<EOF
+generic:exec <service> [-i] [-t] <cmd> [args...]
+
+Run a command inside the running container. Exit code propagates.
+EOF
+}

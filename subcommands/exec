@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+shift
+SERVICE=""
+TTY_FLAG=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -i) TTY_FLAG="$TTY_FLAG -i"; shift ;;
+    -t) TTY_FLAG="$TTY_FLAG -t"; shift ;;
+    -it|-ti) TTY_FLAG="$TTY_FLAG -it"; shift ;;
+    *)
+      if [[ -z "$SERVICE" ]]; then
+        SERVICE="$1"; shift
+      else
+        break
+      fi
+      ;;
+  esac
+done
+
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a valid name for the service"
+[[ $# -eq 0 ]] && dokku_log_fail "Please specify a command to exec"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+service_is_running "$SERVICE" || dokku_log_fail "Service $SERVICE is not running"
+
+CONTAINER="$(service_container_name "$SERVICE")"
+
+# shellcheck disable=SC2086
+exec "$DOCKER_BIN" exec $TTY_FLAG "$CONTAINER" "$@"
