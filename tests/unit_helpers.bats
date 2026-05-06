@@ -464,3 +464,11 @@ EOF
   [[ "${_DOCKER_RUN_ARGS[1]}" == "--cap-add=NET_ADMIN" ]] || flunk "expected second arg, got: ${_DOCKER_RUN_ARGS[1]}"
   rm -rf "$tmp"
 }
+
+@test "service_is_running returns 1 when container missing" {
+  PLUGIN_DATA_ROOT="$(mktemp -d)"
+  mkdir -p "$PLUGIN_DATA_ROOT/missing"
+  run service_is_running "missing"
+  assert_failure
+  rm -rf "$PLUGIN_DATA_ROOT"
+}
