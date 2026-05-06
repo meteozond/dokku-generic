@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -eo pipefail
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+shift
+SERVICE="${1:-}"
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a service"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+LINKS_FILE="$(service_root "$SERVICE")/LINKS"
+[[ -s "$LINKS_FILE" ]] && cat "$LINKS_FILE" || echo "(no apps linked)"

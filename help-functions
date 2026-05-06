@@ -160,3 +160,27 @@ Disconnect service from app: removes --network from docker-options and unsets
 all related config keys (those referencing the service DNS name + LINK_ENV vars).
 EOF
 }
+
+cmd_linked_help() {
+  cat <<EOF
+generic:linked <service>
+
+List apps linked to a service. Prints "(no apps linked)" when empty.
+EOF
+}
+
+cmd_links_help() {
+  cat <<EOF
+generic:links <app>
+
+List services linked to an app. Prints "(no services linked)" when empty.
+EOF
+}
+
+cmd_app_links_help() {
+  cat <<EOF
+generic:app-links <app>
+
+Alias of generic:links. Lists services linked to an app.
+EOF
+}

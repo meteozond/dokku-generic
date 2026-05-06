@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eo pipefail
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+exec "$PLUGIN_BASE_PATH/subcommands/links" "$@"

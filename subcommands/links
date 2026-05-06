@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -eo pipefail
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+shift
+APP="${1:-}"
+[[ -z "$APP" ]] && dokku_log_fail "Please specify an app"
+
+found=0
+while IFS= read -r service; do
+  [[ -z "$service" ]] && continue
+  if grep -qxF "$APP" "$(service_root "$service")/LINKS" 2>/dev/null; then
+    echo "$service"
+    found=1
+  fi
+done < <(fn-services-list)
+[[ $found -eq 0 ]] && echo "(no services linked)"
