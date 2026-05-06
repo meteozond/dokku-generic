@@ -47,7 +47,7 @@ env_get() {
   local line
   line=$(grep "^${key}=" "$file" | head -n1)
   [[ -z "$line" ]] && return 0
-  env_unescape "${line#${key}=}"
+  env_unescape "${line#"${key}"=}"
 }
 
 env_unset() {
