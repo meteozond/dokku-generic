@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+OLD_APP="$1"
+NEW_APP="$2"
+[[ -z "$OLD_APP" || -z "$NEW_APP" ]] && exit 0
+
+while IFS= read -r service; do
+  [[ -z "$service" ]] && continue
+  links_file="$(service_root "$service")/LINKS"
+  [[ -f "$links_file" ]] || continue
+  if grep -qxF "$OLD_APP" "$links_file"; then
+    "$PLUGIN_BASE_PATH/subcommands/link" "generic:link" "$service" "$NEW_APP" || true
+  fi
+done < <(fn-services-list)
