@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+bats_require_minimum_version 1.5.0
+
 load test_helper
 
 setup() {
@@ -313,4 +315,22 @@ setup() {
   assert_contains "$output" "svc1"
   assert_contains "$output" "svc2"
   rm -rf "$PLUGIN_DATA_ROOT"
+}
+
+@test "dokku_log_info1 prints message to stdout" {
+  run dokku_log_info1 "hello"
+  assert_success
+  assert_contains "$output" "hello"
+}
+
+@test "dokku_log_warn prints to stderr" {
+  run --separate-stderr dokku_log_warn "warn message"
+  assert_success
+  assert_contains "$stderr" "warn message"
+}
+
+@test "dokku_log_fail prints to stderr and exits 1" {
+  run --separate-stderr dokku_log_fail "fail message"
+  assert_failure
+  assert_contains "$stderr" "fail message"
 }

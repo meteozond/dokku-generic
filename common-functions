@@ -141,3 +141,15 @@ fn-services-list() {
     basename "$entry"
   done
 }
+
+# When Dokku core is available, prefer its loggers; otherwise fallback.
+if ! declare -f dokku_log_info1 >/dev/null 2>&1; then
+  dokku_log_info1() { echo " !  $*"; }
+  dokku_log_info2() { echo "=====> $*"; }
+  dokku_log_info1_quiet() { :; }
+  dokku_log_info2_quiet() { :; }
+  dokku_log_verbose() { echo "       $*"; }
+  dokku_log_verbose_quiet() { :; }
+  dokku_log_warn() { echo " !  $*" >&2; }
+  dokku_log_fail() { echo " !  $*" >&2; exit 1; }
+fi
