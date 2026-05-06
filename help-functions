@@ -92,3 +92,10 @@ generic:stop <service>
 Stop a running service. No-op if already stopped. Container kept for fast restart.
 EOF
 }
+
+cmd_restart_help() { cat <<EOF
+generic:restart <service>
+
+Recreate container with current state. Reads IMAGE/ENV/MOUNTS/etc fresh.
+EOF
+}
