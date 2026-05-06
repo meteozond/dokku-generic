@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# help-functions: human-readable help texts per subcommand.
+
+cmd_create_help() {
+  cat <<EOF
+generic:create <service> <image[:tag]> [flags]
+
+Create a new generic service from a Docker image.
+
+Flags:
+  --port N                Port inside container (for link/expose)
+  --scheme STR            URL scheme for <PREFIX>_URL (default: tcp)
+  --env KEY=VAL           Container env var (repeatable)
+  --link-env KEY=VAL      Extra env injected into linked apps (repeatable)
+  --mount SPEC            Mount: /container/path | /host:/container | name:/container[:ro|:rw]
+  --expose H:C            Expose port to host immediately (repeatable; needs Plan 5)
+  --cmd "..."             CMD-override (placed after image)
+  --entrypoint /bin/x     Entrypoint-override
+  --docker-arg ARG        Extra arg to docker run (repeatable)
+  --no-start              Create state, don't start container
+EOF
+}
+
+cmd_destroy_help() { cat <<EOF
+generic:destroy <service> [-f|--force]
+
+Delete a service: container, network, named volumes, state.
+Blocked if service has active links. Without --force prompts for service name.
+EOF
+}
+
+cmd_list_help() { cat <<EOF
+generic:list
+
+List all generic services with image and status.
+EOF
+}
+
+cmd_exists_help() { cat <<EOF
+generic:exists <service>
+
+Exit 0 if service exists, 1 otherwise.
+EOF
+}
+
+cmd_info_help() { cat <<EOF
+generic:info <service> [--image|--status|--port|--internal-ip|--links|--exposed-ports]
+
+Show service information. Without flag prints all fields.
+EOF
+}
+
+cmd_config_help() { cat <<EOF
+generic:config <service>
+
+Print service configuration: env vars, link-env vars, mounts, exposed ports, port, scheme.
+EOF
+}

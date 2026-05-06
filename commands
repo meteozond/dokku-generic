@@ -9,18 +9,19 @@ source "$PLUGIN_BASE_PATH/functions"
 
 case "$1" in
   generic:help|generic)
+    source "$PLUGIN_BASE_PATH/help-functions"
     cat <<EOF
 Usage: dokku generic[:COMMAND] ...
 
 Commands:
-  create       Create a new generic service
-  destroy      Delete a service and its data
-  exists       Check if service exists (exit 0/1)
-  list         List all generic services
-  info         Show service info (image, status, port, links)
-  config       Show all env/link-env/mounts of service
+$(cmd_create_help | head -3)
+$(cmd_destroy_help | head -3)
+$(cmd_list_help | head -3)
+$(cmd_exists_help | head -3)
+$(cmd_info_help | head -3)
+$(cmd_config_help | head -3)
 
-More commands will be added in subsequent plans.
+For full help on a command: dokku generic:<command> --help (TBD in Plan 8)
 EOF
     ;;
   generic:create|generic:destroy|generic:exists|generic:list|generic:info|generic:config)
