@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+# args: $1=generic:create $2=<service> $3=<image>
+SERVICE="${2:-}"
+IMAGE="${3:-}"
+
+if [[ -z "$SERVICE" ]]; then
+  dokku_log_fail "Please specify a valid name for the service"
+fi
+if [[ -z "$IMAGE" ]]; then
+  dokku_log_fail "Please specify a docker image (e.g. redis:7-alpine)"
+fi
+if ! verify_service_name "$SERVICE"; then
+  dokku_log_fail "Invalid service name: must match ^[a-zA-Z][a-zA-Z0-9_-]*$ (max 50 chars)"
+fi
+if service_exists "$SERVICE"; then
+  dokku_log_fail "Service $SERVICE already exists"
+fi
+
+ROOT="$(service_root "$SERVICE")"
+CONTAINER="$(service_container_name "$SERVICE")"
+NETWORK="$(service_network_name "$SERVICE")"
+
+# Pull image if missing locally
+if ! "$DOCKER_BIN" image inspect "$IMAGE" >/dev/null 2>&1; then
+  dokku_log_info1 "Pulling image $IMAGE"
+  "$DOCKER_BIN" image pull "$IMAGE"
+fi
+
+# Initialize state
+mkdir -p "$ROOT"
+echo "$IMAGE" > "$ROOT/IMAGE"
+echo "tcp" > "$ROOT/SCHEME"
+date -u +"%Y-%m-%dT%H:%M:%SZ" > "$ROOT/CREATED_AT"
+
+cleanup_on_fail() {
+  rm -rf "$ROOT"
+  "$DOCKER_BIN" network rm "$NETWORK" >/dev/null 2>&1 || true
+}
+trap cleanup_on_fail ERR
+
+# Create network
+"$DOCKER_BIN" network inspect "$NETWORK" >/dev/null 2>&1 \
+  || "$DOCKER_BIN" network create "$NETWORK" >/dev/null
+
+# Run container
+# shellcheck disable=SC2046
+"$DOCKER_BIN" container run -d \
+  --name "$CONTAINER" \
+  --hostname "$CONTAINER" \
+  --restart unless-stopped \
+  --label dokku=service \
+  --label "dokku.service=$PLUGIN_SERVICE" \
+  --label "dokku.generic.service=$SERVICE" \
+  --network "$NETWORK" \
+  --network-alias "$SERVICE" \
+  $(build_run_args "$SERVICE") \
+  "$IMAGE" \
+  $(build_cmd_args "$SERVICE") >/dev/null
+
+"$DOCKER_BIN" container inspect -f '{{.Id}}' "$CONTAINER" > "$ROOT/ID"
+trap - ERR
+
+dokku_log_info2 "container created: $SERVICE"
