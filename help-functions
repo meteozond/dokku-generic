@@ -71,3 +71,10 @@ generic:unset <service> --<flag> <key>
 Remove specific keys from service config. Flags: --env, --link-env, --mount, --docker-arg, --expose. Restarts service if running.
 EOF
 }
+
+cmd_upgrade_help() { cat <<EOF
+generic:upgrade <service> <new-image[:tag]>
+
+Update service to a new image. Alias for: set --image. Restarts container.
+EOF
+}
