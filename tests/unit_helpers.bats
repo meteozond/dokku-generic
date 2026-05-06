@@ -349,3 +349,105 @@ setup() {
   run service_default_volume_name "myservice"
   assert_output "dokku.generic.myservice"
 }
+
+@test "build_run_args includes -e flags from ENV" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/myservice"
+  echo "redis:7" > "$tmp/myservice/IMAGE"
+  env_set "$tmp/myservice/ENV" "FOO" "bar"
+  run build_run_args "myservice"
+  assert_success
+  assert_contains "$output" "-e FOO=bar"
+  rm -rf "$tmp"
+}
+
+@test "build_run_args includes -v for default volume when MOUNTS empty" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/myservice"
+  echo "redis:7" > "$tmp/myservice/IMAGE"
+  run build_run_args "myservice"
+  assert_success
+  # No mounts file → no -v expected; volume is created on demand at first --mount
+  assert_not_contains "$output" "-v "
+  rm -rf "$tmp"
+}
+
+@test "build_run_args parses MOUNTS lines into -v flags" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/myservice"
+  echo "redis:7" > "$tmp/myservice/IMAGE"
+  cat > "$tmp/myservice/MOUNTS" <<EOF
+/var/lib/data
+/host/path:/container/path:ro
+myvol:/var/log
+EOF
+  run build_run_args "myservice"
+  assert_success
+  # plain path → named auto volume
+  assert_contains "$output" "-v dokku.generic.myservice."
+  assert_contains "$output" ":/var/lib/data"
+  # bind mount with ro
+  assert_contains "$output" "-v /host/path:/container/path:ro"
+  # named with explicit name
+  assert_contains "$output" "-v myvol:/var/log"
+  rm -rf "$tmp"
+}
+
+@test "build_run_args includes --entrypoint when ENTRYPOINT file present" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/myservice"
+  echo "redis:7" > "$tmp/myservice/IMAGE"
+  echo "/bin/myinit" > "$tmp/myservice/ENTRYPOINT"
+  run build_run_args "myservice"
+  assert_success
+  assert_contains "$output" "--entrypoint /bin/myinit"
+  rm -rf "$tmp"
+}
+
+@test "build_run_args appends DOCKER_ARGS lines verbatim" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/myservice"
+  echo "redis:7" > "$tmp/myservice/IMAGE"
+  cat > "$tmp/myservice/DOCKER_ARGS" <<EOF
+--user=1000:1000
+--cap-add=NET_ADMIN
+EOF
+  run build_run_args "myservice"
+  assert_success
+  assert_contains "$output" "--user=1000:1000"
+  assert_contains "$output" "--cap-add=NET_ADMIN"
+  rm -rf "$tmp"
+}
+
+@test "build_cmd_args returns CMD content" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/myservice"
+  echo "server /data --bind 0.0.0.0" > "$tmp/myservice/CMD"
+  run build_cmd_args "myservice"
+  assert_success
+  assert_output "server /data --bind 0.0.0.0"
+  rm -rf "$tmp"
+}
+
+@test "build_cmd_args returns empty when no CMD file" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/myservice"
+  run build_cmd_args "myservice"
+  assert_success
+  assert_output ""
+  rm -rf "$tmp"
+}

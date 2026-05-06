@@ -1,2 +1,56 @@
 #!/usr/bin/env bash
 # functions: plugin-specific helpers.
+
+# Returns space-separated string of docker run options (excluding image and CMD).
+# Caller is responsible for putting together the final docker run command.
+build_run_args() {
+  local service="$1"
+  local root
+  root="$(service_root "$service")"
+
+  # ENV → -e flags
+  if [[ -f "$root/ENV" ]]; then
+    env_to_docker_args "$root/ENV"
+  fi
+
+  # MOUNTS → -v flags
+  if [[ -f "$root/MOUNTS" ]]; then
+    local line type src tgt mode parsed
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      parsed=$(parse_mount_spec "$line") || continue
+      IFS='|' read -r type src tgt mode <<< "$parsed"
+      if [[ "$type" == "named" ]]; then
+        if [[ -z "$src" ]]; then
+          src="$(mount_volume_name "$service" "$tgt")"
+        fi
+        printf -- '-v %s:%s:%s ' "$src" "$tgt" "$mode"
+      else
+        printf -- '-v %s:%s:%s ' "$src" "$tgt" "$mode"
+      fi
+    done < "$root/MOUNTS"
+  fi
+
+  # ENTRYPOINT
+  if [[ -s "$root/ENTRYPOINT" ]]; then
+    printf -- '--entrypoint %s ' "$(<"$root/ENTRYPOINT")"
+  fi
+
+  # DOCKER_ARGS
+  if [[ -f "$root/DOCKER_ARGS" ]]; then
+    local arg
+    while IFS= read -r arg; do
+      [[ -z "$arg" ]] && continue
+      printf '%s ' "$arg"
+    done < "$root/DOCKER_ARGS"
+  fi
+}
+
+build_cmd_args() {
+  local service="$1"
+  local root
+  root="$(service_root "$service")"
+  if [[ -s "$root/CMD" ]]; then
+    cat "$root/CMD"
+  fi
+}
