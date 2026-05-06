@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-[[ " redis " == *" $0 "* ]] && return 0 # avoid sourcing twice
 
 export PLUGIN_COMMAND_PREFIX="generic"
 export PLUGIN_SERVICE="generic"
