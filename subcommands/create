@@ -27,45 +27,84 @@ while [[ $# -gt 0 ]]; do
   arg="$1"
   case "$arg" in
     --no-start)
-      NO_START=1; shift ;;
+      NO_START=1
+      shift
+      ;;
     --port)
-      PORT="$2"; shift 2 ;;
+      PORT="$2"
+      shift 2
+      ;;
     --port=*)
-      PORT="${arg#--port=}"; shift ;;
+      PORT="${arg#--port=}"
+      shift
+      ;;
     --scheme)
-      SCHEME="$2"; shift 2 ;;
+      SCHEME="$2"
+      shift 2
+      ;;
     --scheme=*)
-      SCHEME="${arg#--scheme=}"; shift ;;
+      SCHEME="${arg#--scheme=}"
+      shift
+      ;;
     --env)
-      ENV_PAIRS+=("$2"); shift 2 ;;
+      ENV_PAIRS+=("$2")
+      shift 2
+      ;;
     --env=*)
-      ENV_PAIRS+=("${arg#--env=}"); shift ;;
+      ENV_PAIRS+=("${arg#--env=}")
+      shift
+      ;;
     --link-env)
-      LINK_ENV_PAIRS+=("$2"); shift 2 ;;
+      LINK_ENV_PAIRS+=("$2")
+      shift 2
+      ;;
     --link-env=*)
-      LINK_ENV_PAIRS+=("${arg#--link-env=}"); shift ;;
+      LINK_ENV_PAIRS+=("${arg#--link-env=}")
+      shift
+      ;;
     --mount)
-      MOUNTS+=("$2"); shift 2 ;;
+      MOUNTS+=("$2")
+      shift 2
+      ;;
     --mount=*)
-      MOUNTS+=("${arg#--mount=}"); shift ;;
+      MOUNTS+=("${arg#--mount=}")
+      shift
+      ;;
     --cmd)
-      CMD_OVERRIDE="$2"; shift 2 ;;
+      CMD_OVERRIDE="$2"
+      shift 2
+      ;;
     --cmd=*)
-      CMD_OVERRIDE="${arg#--cmd=}"; shift ;;
+      CMD_OVERRIDE="${arg#--cmd=}"
+      shift
+      ;;
     --entrypoint)
-      ENTRYPOINT_OVERRIDE="$2"; shift 2 ;;
+      ENTRYPOINT_OVERRIDE="$2"
+      shift 2
+      ;;
     --entrypoint=*)
-      ENTRYPOINT_OVERRIDE="${arg#--entrypoint=}"; shift ;;
+      ENTRYPOINT_OVERRIDE="${arg#--entrypoint=}"
+      shift
+      ;;
     --docker-arg)
-      DOCKER_ARGS+=("$2"); shift 2 ;;
+      DOCKER_ARGS+=("$2")
+      shift 2
+      ;;
     --docker-arg=*)
-      DOCKER_ARGS+=("${arg#--docker-arg=}"); shift ;;
+      DOCKER_ARGS+=("${arg#--docker-arg=}")
+      shift
+      ;;
     --expose)
-      EXPOSED_PORTS+=("$2"); shift 2 ;;
+      EXPOSED_PORTS+=("$2")
+      shift 2
+      ;;
     --expose=*)
-      EXPOSED_PORTS+=("${arg#--expose=}"); shift ;;
+      EXPOSED_PORTS+=("${arg#--expose=}")
+      shift
+      ;;
     -*)
-      dokku_log_fail "Unknown flag: $arg" ;;
+      dokku_log_fail "Unknown flag: $arg"
+      ;;
     *)
       if [[ -z "$SERVICE" ]]; then
         SERVICE="$arg"
@@ -74,7 +113,8 @@ while [[ $# -gt 0 ]]; do
       else
         dokku_log_fail "Unexpected positional argument: $arg"
       fi
-      shift ;;
+      shift
+      ;;
   esac
 done
 
@@ -103,12 +143,12 @@ fi
 
 # Initialize state
 mkdir -p "$ROOT"
-echo "$IMAGE" > "$ROOT/IMAGE"
-[[ -n "$PORT" ]] && echo "$PORT" > "$ROOT/PORT"
-echo "${SCHEME:-tcp}" > "$ROOT/SCHEME"
-[[ -n "$CMD_OVERRIDE" ]] && printf '%s' "$CMD_OVERRIDE" > "$ROOT/CMD"
-[[ -n "$ENTRYPOINT_OVERRIDE" ]] && printf '%s' "$ENTRYPOINT_OVERRIDE" > "$ROOT/ENTRYPOINT"
-date -u +"%Y-%m-%dT%H:%M:%SZ" > "$ROOT/CREATED_AT"
+echo "$IMAGE" >"$ROOT/IMAGE"
+[[ -n "$PORT" ]] && echo "$PORT" >"$ROOT/PORT"
+echo "${SCHEME:-tcp}" >"$ROOT/SCHEME"
+[[ -n "$CMD_OVERRIDE" ]] && printf '%s' "$CMD_OVERRIDE" >"$ROOT/CMD"
+[[ -n "$ENTRYPOINT_OVERRIDE" ]] && printf '%s' "$ENTRYPOINT_OVERRIDE" >"$ROOT/ENTRYPOINT"
+date -u +"%Y-%m-%dT%H:%M:%SZ" >"$ROOT/CREATED_AT"
 
 # Validate and write env
 for pair in "${ENV_PAIRS[@]}"; do
@@ -145,12 +185,12 @@ for spec in "${MOUNTS[@]}"; do
     rm -rf "$ROOT"
     dokku_log_fail "Invalid --mount spec: $spec"
   fi
-  echo "$spec" >> "$ROOT/MOUNTS"
+  echo "$spec" >>"$ROOT/MOUNTS"
 done
 
 # Docker args
 for da in "${DOCKER_ARGS[@]}"; do
-  echo "$da" >> "$ROOT/DOCKER_ARGS"
+  echo "$da" >>"$ROOT/DOCKER_ARGS"
 done
 
 # Exposed ports — record only; activation happens in expose subcommand (Plan 5)
@@ -159,7 +199,7 @@ for ep in "${EXPOSED_PORTS[@]}"; do
     rm -rf "$ROOT"
     dokku_log_fail "Invalid --expose: expected HOST:CONTAINER, got $ep"
   fi
-  echo "$ep" >> "$ROOT/EXPOSED_PORTS"
+  echo "$ep" >>"$ROOT/EXPOSED_PORTS"
 done
 
 # Stop here if --no-start
@@ -176,8 +216,8 @@ cleanup_on_fail() {
 trap cleanup_on_fail ERR
 
 # Create network
-"$DOCKER_BIN" network inspect "$NETWORK" >/dev/null 2>&1 \
-  || "$DOCKER_BIN" network create "$NETWORK" >/dev/null
+"$DOCKER_BIN" network inspect "$NETWORK" >/dev/null 2>&1 ||
+  "$DOCKER_BIN" network create "$NETWORK" >/dev/null
 
 # Build & run
 build_run_args "$SERVICE"
@@ -196,7 +236,7 @@ build_cmd_args "$SERVICE"
   "$IMAGE" \
   "${_DOCKER_CMD_ARGS[@]}" >/dev/null
 
-"$DOCKER_BIN" container inspect -f '{{.Id}}' "$CONTAINER" > "$ROOT/ID"
+"$DOCKER_BIN" container inspect -f '{{.Id}}' "$CONTAINER" >"$ROOT/ID"
 trap - ERR
 
 dokku_log_info2 "container created: $SERVICE"

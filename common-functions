@@ -35,9 +35,9 @@ env_set() {
   local tmp
   tmp="$(mktemp "$dir/.env.XXXXXX")"
   if [[ -f "$file" ]]; then
-    grep -v "^${key}=" "$file" > "$tmp" || true
+    grep -v "^${key}=" "$file" >"$tmp" || true
   fi
-  printf '%s=%s\n' "$key" "$(env_escape "$value")" >> "$tmp"
+  printf '%s=%s\n' "$key" "$(env_escape "$value")" >>"$tmp"
   mv "$tmp" "$file"
 }
 
@@ -57,7 +57,7 @@ env_unset() {
   dir="$(dirname "$file")"
   local tmp
   tmp="$(mktemp "$dir/.env.XXXXXX")"
-  grep -v "^${key}=" "$file" > "$tmp" || true
+  grep -v "^${key}=" "$file" >"$tmp" || true
   mv "$tmp" "$file"
 }
 
@@ -76,7 +76,7 @@ env_to_docker_args() {
     key="${line%%=*}"
     val="${line#*=}"
     printf -- '-e %s=%s ' "$key" "$(env_unescape "$val")"
-  done < "$file"
+  done <"$file"
 }
 
 # parse_mount_spec: returns "TYPE|SOURCE|TARGET|MODE"
@@ -163,5 +163,8 @@ if ! declare -f dokku_log_info1 >/dev/null 2>&1; then
   dokku_log_verbose() { echo "       $*"; }
   dokku_log_verbose_quiet() { :; }
   dokku_log_warn() { echo " !  $*" >&2; }
-  dokku_log_fail() { echo " !  $*" >&2; exit 1; }
+  dokku_log_fail() {
+    echo " !  $*" >&2
+    exit 1
+  }
 fi

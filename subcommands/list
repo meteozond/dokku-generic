@@ -26,4 +26,4 @@ while IFS= read -r service; do
     status="not exists"
   fi
   printf '%-30s %-30s %-15s\n' "$service" "$local_image" "$status"
-done <<< "$services"
+done <<<"$services"

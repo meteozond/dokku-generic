@@ -11,11 +11,14 @@ SERVICE=""
 FLAG=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --image|--status|--port|--internal-ip|--links|--exposed-ports)
-      FLAG="$1"; shift ;;
+    --image | --status | --port | --internal-ip | --links | --exposed-ports)
+      FLAG="$1"
+      shift
+      ;;
     *)
       if [[ -z "$SERVICE" ]]; then SERVICE="$1"; else dokku_log_fail "Unexpected: $1"; fi
-      shift ;;
+      shift
+      ;;
   esac
 done
 
@@ -50,29 +53,44 @@ get_internal_ip() {
 }
 
 get_links() {
-  [[ -f "$ROOT/LINKS" ]] && tr '\n' ' ' < "$ROOT/LINKS" || true
+  [[ -f "$ROOT/LINKS" ]] && tr '\n' ' ' <"$ROOT/LINKS" || true
 }
 
 get_exposed_ports() {
-  [[ -f "$ROOT/EXPOSED_PORTS" ]] && tr '\n' ' ' < "$ROOT/EXPOSED_PORTS" || true
+  [[ -f "$ROOT/EXPOSED_PORTS" ]] && tr '\n' ' ' <"$ROOT/EXPOSED_PORTS" || true
 }
 
 case "$FLAG" in
-  --image)         get_image; echo "" ;;
-  --status)        get_status; echo "" ;;
-  --port)          get_port ;;
-  --internal-ip)   get_internal_ip; echo "" ;;
-  --links)         get_links; echo "" ;;
-  --exposed-ports) get_exposed_ports; echo "" ;;
+  --image)
+    get_image
+    echo ""
+    ;;
+  --status)
+    get_status
+    echo ""
+    ;;
+  --port) get_port ;;
+  --internal-ip)
+    get_internal_ip
+    echo ""
+    ;;
+  --links)
+    get_links
+    echo ""
+    ;;
+  --exposed-ports)
+    get_exposed_ports
+    echo ""
+    ;;
   "")
     echo "=====> $SERVICE generic service information"
-    printf '       %-20s %s\n' "Image:"          "$(get_image)"
-    printf '       %-20s %s\n' "Status:"         "$(get_status)"
-    printf '       %-20s %s\n' "Port:"           "$(get_port)"
-    printf '       %-20s %s\n' "Internal IP:"    "$(get_internal_ip)"
-    printf '       %-20s %s\n' "Network:"        "$NETWORK"
-    printf '       %-20s %s\n' "Container:"      "$CONTAINER"
-    printf '       %-20s %s\n' "Links:"          "$(get_links)"
-    printf '       %-20s %s\n' "Exposed ports:"  "$(get_exposed_ports)"
+    printf '       %-20s %s\n' "Image:" "$(get_image)"
+    printf '       %-20s %s\n' "Status:" "$(get_status)"
+    printf '       %-20s %s\n' "Port:" "$(get_port)"
+    printf '       %-20s %s\n' "Internal IP:" "$(get_internal_ip)"
+    printf '       %-20s %s\n' "Network:" "$NETWORK"
+    printf '       %-20s %s\n' "Container:" "$CONTAINER"
+    printf '       %-20s %s\n' "Links:" "$(get_links)"
+    printf '       %-20s %s\n' "Exposed ports:" "$(get_exposed_ports)"
     ;;
 esac

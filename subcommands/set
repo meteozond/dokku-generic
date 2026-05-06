@@ -14,28 +14,84 @@ NEW_IMAGE="" NEW_PORT="" NEW_SCHEME="" NEW_CMD="" NEW_ENTRYPOINT=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --image)        NEW_IMAGE="$2"; shift 2 ;;
-    --image=*)      NEW_IMAGE="${1#--image=}"; shift ;;
-    --port)         NEW_PORT="$2"; shift 2 ;;
-    --port=*)       NEW_PORT="${1#--port=}"; shift ;;
-    --scheme)       NEW_SCHEME="$2"; shift 2 ;;
-    --scheme=*)     NEW_SCHEME="${1#--scheme=}"; shift ;;
-    --env)          TO_SET_ENV+=("$2"); shift 2 ;;
-    --env=*)        TO_SET_ENV+=("${1#--env=}"); shift ;;
-    --link-env)     TO_SET_LINK_ENV+=("$2"); shift 2 ;;
-    --link-env=*)   TO_SET_LINK_ENV+=("${1#--link-env=}"); shift ;;
-    --mount)        TO_ADD_MOUNT+=("$2"); shift 2 ;;
-    --mount=*)      TO_ADD_MOUNT+=("${1#--mount=}"); shift ;;
-    --cmd)          NEW_CMD="$2"; shift 2 ;;
-    --cmd=*)        NEW_CMD="${1#--cmd=}"; shift ;;
-    --entrypoint)   NEW_ENTRYPOINT="$2"; shift 2 ;;
-    --entrypoint=*) NEW_ENTRYPOINT="${1#--entrypoint=}"; shift ;;
-    --docker-arg)   TO_ADD_DOCKER_ARG+=("$2"); shift 2 ;;
-    --docker-arg=*) TO_ADD_DOCKER_ARG+=("${1#--docker-arg=}"); shift ;;
+    --image)
+      NEW_IMAGE="$2"
+      shift 2
+      ;;
+    --image=*)
+      NEW_IMAGE="${1#--image=}"
+      shift
+      ;;
+    --port)
+      NEW_PORT="$2"
+      shift 2
+      ;;
+    --port=*)
+      NEW_PORT="${1#--port=}"
+      shift
+      ;;
+    --scheme)
+      NEW_SCHEME="$2"
+      shift 2
+      ;;
+    --scheme=*)
+      NEW_SCHEME="${1#--scheme=}"
+      shift
+      ;;
+    --env)
+      TO_SET_ENV+=("$2")
+      shift 2
+      ;;
+    --env=*)
+      TO_SET_ENV+=("${1#--env=}")
+      shift
+      ;;
+    --link-env)
+      TO_SET_LINK_ENV+=("$2")
+      shift 2
+      ;;
+    --link-env=*)
+      TO_SET_LINK_ENV+=("${1#--link-env=}")
+      shift
+      ;;
+    --mount)
+      TO_ADD_MOUNT+=("$2")
+      shift 2
+      ;;
+    --mount=*)
+      TO_ADD_MOUNT+=("${1#--mount=}")
+      shift
+      ;;
+    --cmd)
+      NEW_CMD="$2"
+      shift 2
+      ;;
+    --cmd=*)
+      NEW_CMD="${1#--cmd=}"
+      shift
+      ;;
+    --entrypoint)
+      NEW_ENTRYPOINT="$2"
+      shift 2
+      ;;
+    --entrypoint=*)
+      NEW_ENTRYPOINT="${1#--entrypoint=}"
+      shift
+      ;;
+    --docker-arg)
+      TO_ADD_DOCKER_ARG+=("$2")
+      shift 2
+      ;;
+    --docker-arg=*)
+      TO_ADD_DOCKER_ARG+=("${1#--docker-arg=}")
+      shift
+      ;;
     -*) dokku_log_fail "Unknown flag: $1" ;;
     *)
       [[ -n "$SERVICE" ]] && dokku_log_fail "Unexpected: $1"
-      SERVICE="$1"; shift ;;
+      SERVICE="$1"
+      shift
+      ;;
   esac
 done
 
@@ -46,22 +102,24 @@ service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
 ROOT="$(service_root "$SERVICE")"
 
 # Apply scalar fields
-[[ -n "$NEW_IMAGE"      ]] && printf '%s\n' "$NEW_IMAGE"      > "$ROOT/IMAGE"
-[[ -n "$NEW_PORT"       ]] && printf '%s\n' "$NEW_PORT"       > "$ROOT/PORT"
-[[ -n "$NEW_SCHEME"     ]] && printf '%s\n' "$NEW_SCHEME"     > "$ROOT/SCHEME"
-[[ -n "$NEW_CMD"        ]] && printf '%s' "$NEW_CMD"          > "$ROOT/CMD"
-[[ -n "$NEW_ENTRYPOINT" ]] && printf '%s' "$NEW_ENTRYPOINT"   > "$ROOT/ENTRYPOINT"
+[[ -n "$NEW_IMAGE" ]] && printf '%s\n' "$NEW_IMAGE" >"$ROOT/IMAGE"
+[[ -n "$NEW_PORT" ]] && printf '%s\n' "$NEW_PORT" >"$ROOT/PORT"
+[[ -n "$NEW_SCHEME" ]] && printf '%s\n' "$NEW_SCHEME" >"$ROOT/SCHEME"
+[[ -n "$NEW_CMD" ]] && printf '%s' "$NEW_CMD" >"$ROOT/CMD"
+[[ -n "$NEW_ENTRYPOINT" ]] && printf '%s' "$NEW_ENTRYPOINT" >"$ROOT/ENTRYPOINT"
 
 # Apply env / link-env
 for pair in "${TO_SET_ENV[@]}"; do
   [[ "$pair" != *=* ]] && dokku_log_fail "Invalid --env: $pair"
-  key="${pair%%=*}"; val="${pair#*=}"
+  key="${pair%%=*}"
+  val="${pair#*=}"
   [[ "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]] || dokku_log_fail "Invalid --env key: $key"
   env_set "$ROOT/ENV" "$key" "$val"
 done
 for pair in "${TO_SET_LINK_ENV[@]}"; do
   [[ "$pair" != *=* ]] && dokku_log_fail "Invalid --link-env: $pair"
-  key="${pair%%=*}"; val="${pair#*=}"
+  key="${pair%%=*}"
+  val="${pair#*=}"
   [[ "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]] || dokku_log_fail "Invalid --link-env key: $key"
   env_set "$ROOT/LINK_ENV" "$key" "$val"
 done
@@ -69,12 +127,12 @@ done
 # Append mounts
 for spec in "${TO_ADD_MOUNT[@]}"; do
   parse_mount_spec "$spec" >/dev/null || dokku_log_fail "Invalid --mount: $spec"
-  printf '%s\n' "$spec" >> "$ROOT/MOUNTS"
+  printf '%s\n' "$spec" >>"$ROOT/MOUNTS"
 done
 
 # Append docker args
 for da in "${TO_ADD_DOCKER_ARG[@]}"; do
-  printf '%s\n' "$da" >> "$ROOT/DOCKER_ARGS"
+  printf '%s\n' "$da" >>"$ROOT/DOCKER_ARGS"
 done
 
 dokku_log_info1 "Updated $SERVICE state"

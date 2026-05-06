@@ -6,7 +6,7 @@ PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$PLUGIN_BASE_PATH/config"
 source "$PLUGIN_BASE_PATH/common-functions"
 
-shift  # discard "generic:destroy"
+shift # discard "generic:destroy"
 
 SERVICE=""
 # DOKKU_APPS_FORCE_DELETE=1 is set by dokku's global --force flag
@@ -14,11 +14,15 @@ FORCE=0
 [[ "${DOKKU_APPS_FORCE_DELETE:-0}" == "1" ]] && FORCE=1
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -f|--force) FORCE=1; shift ;;
+    -f | --force)
+      FORCE=1
+      shift
+      ;;
     -*) dokku_log_fail "Unknown flag: $1" ;;
     *)
       if [[ -z "$SERVICE" ]]; then SERVICE="$1"; else dokku_log_fail "Unexpected: $1"; fi
-      shift ;;
+      shift
+      ;;
   esac
 done
 
@@ -32,7 +36,7 @@ NETWORK="$(service_network_name "$SERVICE")"
 
 # Block destroy if linked (Plan 4 will populate LINKS; for Plan 1 LINKS may not exist)
 if [[ -s "$ROOT/LINKS" ]]; then
-  dokku_log_fail "Cannot delete linked service: $(tr '\n' ' ' < "$ROOT/LINKS")"
+  dokku_log_fail "Cannot delete linked service: $(tr '\n' ' ' <"$ROOT/LINKS")"
 fi
 
 if [[ $FORCE -ne 1 ]]; then

@@ -8,7 +8,7 @@ source "$PLUGIN_BASE_PATH/common-functions"
 source "$PLUGIN_BASE_PATH/functions"
 
 case "$1" in
-  generic:help|generic)
+  generic:help | generic)
     source "$PLUGIN_BASE_PATH/help-functions"
     cat <<EOF
 Usage: dokku generic[:COMMAND] ...
@@ -34,7 +34,7 @@ $(cmd_logs_help | head -3)
 For full help on a command: dokku generic:<command> --help (TBD in Plan 8)
 EOF
     ;;
-  generic:create|generic:destroy|generic:exists|generic:list|generic:info|generic:config|generic:set|generic:unset|generic:upgrade|generic:start|generic:stop|generic:restart|generic:pause|generic:enter|generic:exec|generic:logs)
+  generic:create | generic:destroy | generic:exists | generic:list | generic:info | generic:config | generic:set | generic:unset | generic:upgrade | generic:start | generic:stop | generic:restart | generic:pause | generic:enter | generic:exec | generic:logs)
     SUBCOMMAND="${1#generic:}"
     if [[ -x "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" ]]; then
       "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" "$@"

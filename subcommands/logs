@@ -12,12 +12,22 @@ EXTRA_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -t|--timestamps) EXTRA_ARGS+=("--timestamps"); shift ;;
-    -n|--num) EXTRA_ARGS+=("--tail" "$2"); shift 2 ;;
-    -f|--follow) EXTRA_ARGS+=("--follow"); shift ;;
+    -t | --timestamps)
+      EXTRA_ARGS+=("--timestamps")
+      shift
+      ;;
+    -n | --num)
+      EXTRA_ARGS+=("--tail" "$2")
+      shift 2
+      ;;
+    -f | --follow)
+      EXTRA_ARGS+=("--follow")
+      shift
+      ;;
     *)
       if [[ -z "$SERVICE" ]]; then SERVICE="$1"; else dokku_log_fail "Unexpected: $1"; fi
-      shift ;;
+      shift
+      ;;
   esac
 done
 

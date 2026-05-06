@@ -13,20 +13,52 @@ declare -a UNSET_ENV=() UNSET_LINK_ENV=() UNSET_MOUNT=() UNSET_DOCKER_ARG=() UNS
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --env)          UNSET_ENV+=("$2"); shift 2 ;;
-    --env=*)        UNSET_ENV+=("${1#--env=}"); shift ;;
-    --link-env)     UNSET_LINK_ENV+=("$2"); shift 2 ;;
-    --link-env=*)   UNSET_LINK_ENV+=("${1#--link-env=}"); shift ;;
-    --mount)        UNSET_MOUNT+=("$2"); shift 2 ;;
-    --mount=*)      UNSET_MOUNT+=("${1#--mount=}"); shift ;;
-    --docker-arg)   UNSET_DOCKER_ARG+=("$2"); shift 2 ;;
-    --docker-arg=*) UNSET_DOCKER_ARG+=("${1#--docker-arg=}"); shift ;;
-    --expose)       UNSET_EXPOSE+=("$2"); shift 2 ;;
-    --expose=*)     UNSET_EXPOSE+=("${1#--expose=}"); shift ;;
+    --env)
+      UNSET_ENV+=("$2")
+      shift 2
+      ;;
+    --env=*)
+      UNSET_ENV+=("${1#--env=}")
+      shift
+      ;;
+    --link-env)
+      UNSET_LINK_ENV+=("$2")
+      shift 2
+      ;;
+    --link-env=*)
+      UNSET_LINK_ENV+=("${1#--link-env=}")
+      shift
+      ;;
+    --mount)
+      UNSET_MOUNT+=("$2")
+      shift 2
+      ;;
+    --mount=*)
+      UNSET_MOUNT+=("${1#--mount=}")
+      shift
+      ;;
+    --docker-arg)
+      UNSET_DOCKER_ARG+=("$2")
+      shift 2
+      ;;
+    --docker-arg=*)
+      UNSET_DOCKER_ARG+=("${1#--docker-arg=}")
+      shift
+      ;;
+    --expose)
+      UNSET_EXPOSE+=("$2")
+      shift 2
+      ;;
+    --expose=*)
+      UNSET_EXPOSE+=("${1#--expose=}")
+      shift
+      ;;
     -*) dokku_log_fail "Unknown flag: $1" ;;
     *)
       [[ -n "$SERVICE" ]] && dokku_log_fail "Unexpected: $1"
-      SERVICE="$1"; shift ;;
+      SERVICE="$1"
+      shift
+      ;;
   esac
 done
 
@@ -41,15 +73,15 @@ remove_line() {
   [[ -f "$file" ]] || return 0
   local tmp
   tmp="$(mktemp "$(dirname "$file")/.unset.XXXXXX")"
-  grep -vxF -- "$pattern" "$file" > "$tmp" || true
+  grep -vxF -- "$pattern" "$file" >"$tmp" || true
   mv "$tmp" "$file"
 }
 
-for k in "${UNSET_ENV[@]}";            do env_unset "$ROOT/ENV" "$k"; done
-for k in "${UNSET_LINK_ENV[@]}";       do env_unset "$ROOT/LINK_ENV" "$k"; done
-for spec in "${UNSET_MOUNT[@]}";       do remove_line "$ROOT/MOUNTS" "$spec"; done
-for arg in "${UNSET_DOCKER_ARG[@]}";   do remove_line "$ROOT/DOCKER_ARGS" "$arg"; done
-for ep in "${UNSET_EXPOSE[@]}";        do remove_line "$ROOT/EXPOSED_PORTS" "$ep"; done
+for k in "${UNSET_ENV[@]}"; do env_unset "$ROOT/ENV" "$k"; done
+for k in "${UNSET_LINK_ENV[@]}"; do env_unset "$ROOT/LINK_ENV" "$k"; done
+for spec in "${UNSET_MOUNT[@]}"; do remove_line "$ROOT/MOUNTS" "$spec"; done
+for arg in "${UNSET_DOCKER_ARG[@]}"; do remove_line "$ROOT/DOCKER_ARGS" "$arg"; done
+for ep in "${UNSET_EXPOSE[@]}"; do remove_line "$ROOT/EXPOSED_PORTS" "$ep"; done
 
 dokku_log_info1 "Updated $SERVICE state"
 

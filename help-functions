@@ -21,7 +21,8 @@ Flags:
 EOF
 }
 
-cmd_destroy_help() { cat <<EOF
+cmd_destroy_help() {
+  cat <<EOF
 generic:destroy <service> [-f|--force]
 
 Delete a service: container, network, named volumes, state.
@@ -29,35 +30,40 @@ Blocked if service has active links. Without --force prompts for service name.
 EOF
 }
 
-cmd_list_help() { cat <<EOF
+cmd_list_help() {
+  cat <<EOF
 generic:list
 
 List all generic services with image and status.
 EOF
 }
 
-cmd_exists_help() { cat <<EOF
+cmd_exists_help() {
+  cat <<EOF
 generic:exists <service>
 
 Exit 0 if service exists, 1 otherwise.
 EOF
 }
 
-cmd_info_help() { cat <<EOF
+cmd_info_help() {
+  cat <<EOF
 generic:info <service> [--image|--status|--port|--internal-ip|--links|--exposed-ports]
 
 Show service information. Without flag prints all fields.
 EOF
 }
 
-cmd_config_help() { cat <<EOF
+cmd_config_help() {
+  cat <<EOF
 generic:config <service>
 
 Print service configuration: env vars, link-env vars, mounts, exposed ports, port, scheme.
 EOF
 }
 
-cmd_set_help() { cat <<EOF
+cmd_set_help() {
+  cat <<EOF
 generic:set <service> <flags>
 
 Update service configuration. Same flags as create (except --no-start).
@@ -65,63 +71,72 @@ Restarts container automatically if running.
 EOF
 }
 
-cmd_unset_help() { cat <<EOF
+cmd_unset_help() {
+  cat <<EOF
 generic:unset <service> --<flag> <key>
 
 Remove specific keys from service config. Flags: --env, --link-env, --mount, --docker-arg, --expose. Restarts service if running.
 EOF
 }
 
-cmd_upgrade_help() { cat <<EOF
+cmd_upgrade_help() {
+  cat <<EOF
 generic:upgrade <service> <new-image[:tag]>
 
 Update service to a new image. Alias for: set --image. Restarts container.
 EOF
 }
 
-cmd_start_help() { cat <<EOF
+cmd_start_help() {
+  cat <<EOF
 generic:start <service>
 
 Start a stopped service. No-op if running. Recreates from state if container missing.
 EOF
 }
 
-cmd_stop_help() { cat <<EOF
+cmd_stop_help() {
+  cat <<EOF
 generic:stop <service>
 
 Stop a running service. No-op if already stopped. Container kept for fast restart.
 EOF
 }
 
-cmd_restart_help() { cat <<EOF
+cmd_restart_help() {
+  cat <<EOF
 generic:restart <service>
 
 Recreate container with current state. Reads IMAGE/ENV/MOUNTS/etc fresh.
 EOF
 }
 
-cmd_pause_help() { cat <<EOF
+cmd_pause_help() {
+  cat <<EOF
 generic:pause <service>
 
 Toggle pause/unpause on a running or paused container. Useful for debugging.
 EOF
 }
 
-cmd_enter_help() { cat <<EOF
+cmd_enter_help() {
+  cat <<EOF
 generic:enter <service>
 
 Drop into interactive shell inside the running container. Tries bash, falls back to sh.
 EOF
 }
 
-cmd_exec_help() { cat <<EOF
+cmd_exec_help() {
+  cat <<EOF
 generic:exec <service> [-i] [-t] <cmd> [args...]
 
 Run a command inside the running container. Exit code propagates.
 EOF
 }
 
-cmd_logs_help() { cat <<EOF
+cmd_logs_help() {
+  cat <<EOF
 generic:logs <service> [-t] [-n N] [-f]
 
 Show container logs. Flags: -t (timestamps), -n N (last N lines), -f (follow).

@@ -23,7 +23,7 @@ build_run_args() {
       key="${line%%=*}"
       val="${line#*=}"
       _DOCKER_RUN_ARGS+=(-e "$key=$(env_unescape "$val")")
-    done < "$root/ENV"
+    done <"$root/ENV"
   fi
 
   # MOUNTS → -v flags
@@ -32,12 +32,12 @@ build_run_args() {
     while IFS= read -r line; do
       [[ -z "$line" ]] && continue
       parsed=$(parse_mount_spec "$line") || continue
-      IFS='|' read -r type src tgt mode <<< "$parsed"
+      IFS='|' read -r type src tgt mode <<<"$parsed"
       if [[ "$type" == "named" && -z "$src" ]]; then
         src="$(mount_volume_name "$service" "$tgt")"
       fi
       _DOCKER_RUN_ARGS+=(-v "${src}:${tgt}:${mode}")
-    done < "$root/MOUNTS"
+    done <"$root/MOUNTS"
   fi
 
   # ENTRYPOINT
@@ -51,7 +51,7 @@ build_run_args() {
     while IFS= read -r arg; do
       [[ -z "$arg" ]] && continue
       _DOCKER_RUN_ARGS+=("$arg")
-    done < "$root/DOCKER_ARGS"
+    done <"$root/DOCKER_ARGS"
   fi
 }
 
@@ -87,8 +87,8 @@ service_restart_internal() {
   fi
 
   # Ensure network exists
-  "$DOCKER_BIN" network inspect "$network" >/dev/null 2>&1 \
-    || "$DOCKER_BIN" network create "$network" >/dev/null
+  "$DOCKER_BIN" network inspect "$network" >/dev/null 2>&1 ||
+    "$DOCKER_BIN" network create "$network" >/dev/null
 
   # Pull image if missing
   if ! "$DOCKER_BIN" image inspect "$image" >/dev/null 2>&1; then
@@ -112,7 +112,7 @@ service_restart_internal() {
     "$image" \
     "${_DOCKER_CMD_ARGS[@]}" >/dev/null
 
-  "$DOCKER_BIN" container inspect -f '{{.Id}}' "$container" > "$(service_root "$service")/ID"
+  "$DOCKER_BIN" container inspect -f '{{.Id}}' "$container" >"$(service_root "$service")/ID"
 }
 
 # Returns 0 if the service container exists and is running.
@@ -139,7 +139,7 @@ service_url() {
   root="$(service_root "$service")"
   port=""
   scheme="tcp"
-  [[ -f "$root/PORT" ]]   && port=$(cat "$root/PORT")
+  [[ -f "$root/PORT" ]] && port=$(cat "$root/PORT")
   [[ -f "$root/SCHEME" ]] && scheme=$(cat "$root/SCHEME")
   [[ -z "$port" ]] && return 0
   printf '%s://%s:%s' "$scheme" "$(service_container_name "$service")" "$port"
