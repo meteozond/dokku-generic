@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+case "$1" in
+  generic:help|generic)
+    cat <<EOF
+Usage: dokku generic[:COMMAND] ...
+
+Commands:
+  create       Create a new generic service
+  destroy      Delete a service and its data
+  exists       Check if service exists (exit 0/1)
+  list         List all generic services
+  info         Show service info (image, status, port, links)
+  config       Show all env/link-env/mounts of service
+
+More commands will be added in subsequent plans.
+EOF
+    ;;
+  generic:create|generic:destroy|generic:exists|generic:list|generic:info|generic:config)
+    SUBCOMMAND="${1#generic:}"
+    if [[ -x "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" ]]; then
+      "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" "$@"
+    else
+      echo " !  Subcommand $SUBCOMMAND not implemented yet" >&2
+      exit 1
+    fi
+    ;;
+  *)
+    # Pass through unhandled to allow other plugins
+    # shellcheck disable=SC2317  # exit 0 is the fallback when not sourced
+    return 0 2>/dev/null || exit 0
+    ;;
+esac
