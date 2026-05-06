@@ -68,6 +68,8 @@ dokku-generic/
 │   ├── set
 │   ├── unset
 │   ├── upgrade
+│   ├── clone
+│   ├── rename
 │   ├── start
 │   ├── stop
 │   ├── restart
@@ -97,6 +99,8 @@ dokku-generic/
 │   ├── service_set.bats
 │   ├── service_unset.bats
 │   ├── service_upgrade.bats
+│   ├── service_clone.bats
+│   ├── service_rename.bats
 │   ├── service_start.bats
 │   ├── service_stop.bats
 │   ├── service_restart.bats
@@ -162,6 +166,49 @@ dokku generic:list                      # таблица всех generic-сер
 dokku generic:info <service> [--<flag>] # --image, --status, --port, --internal-ip, --links, --exposed-ports
 dokku generic:config <service>          # все ENV + LINK_ENV + MOUNTS + scheme + port
 ```
+
+```bash
+dokku generic:clone <source> <new> [--copy-volumes] [флаги override]
+```
+Копирует state-каталог `<source>` → `<new>` и создаёт новый сервис. По умолчанию **только конфиг** (image, port, scheme, ENV, LINK_ENV, MOUNTS-метаданные, CMD/ENTRYPOINT/DOCKER_ARGS). Volumes у нового сервиса — пустые named volumes с новыми именами. Linked apps **не клонируются** (новый сервис ни к кому не привязан). Любой флаг из `create` можно передать как override для нового сервиса (например, `--env PORT=5433`).
+
+С флагом `--copy-volumes` дополнительно копируются данные всех named volumes старого сервиса в новые через временный контейнер `busybox` (`docker run --rm -v old:/from -v new:/to busybox cp -a /from/. /to/`). Bind-mount хост-путей **не копируются** (хост-пути shared, не имеют смысла копироваться).
+
+Алгоритм:
+1. Проверить `<new>` не существует.
+2. `cp -a state/<source>/ state/<new>/`.
+3. Очистить `state/<new>/LINKS` и `state/<new>/EXPOSED_PORTS` (новый сервис без линков/экспоузов).
+4. Применить override-флаги к state/<new>/.
+5. Создать новую сеть `dokku-generic-<new>`.
+6. Создать новые named volumes (с именами от `<new>`).
+7. Если `--copy-volumes`: для каждого named volume старого → busybox copy в новый.
+8. Стартовать контейнер `<new>` (если у `<source>` не было `--no-start`-маркера).
+
+```bash
+dokku generic:rename <old> <new>
+```
+Переименовывает сервис. Включает: остановку контейнера, перенос state, пересоздание network/volumes, копирование данных, обновление **всех linked apps** (новые имена в docker-options и переменных окружения), удаление старых ресурсов, запуск с новым именем.
+
+Алгоритм:
+1. Проверить `<new>` не существует.
+2. Записать список linked apps из `state/<old>/LINKS` (`old_links`).
+3. Stop старого контейнера (если запущен).
+4. `mv state/<old>/ state/<new>/`.
+5. Создать новую сеть `dokku-generic-<new>`.
+6. Создать новые named volumes с именами от `<new>`.
+7. Скопировать данные всех named volumes старого → новые (busybox), bind-mount хост-пути остаются как есть.
+8. Удалить старый контейнер (`docker rm dokku-generic-<old>`).
+9. Удалить старую сеть (`docker network rm dokku-generic-<old>`).
+10. Удалить старые named volumes.
+11. Стартовать новый контейнер.
+12. Для каждого app в `old_links`:
+    - В `docker-options`: убрать `--network=dokku-generic-<old>`, добавить `--network=dokku-generic-<new>`.
+    - В config app: удалить `<OLD_PREFIX>_HOST/PORT/URL` и переменные старого `LINK_ENV`, добавить переменные с новым префиксом и текущим `LINK_ENV` сервиса.
+    - Триггерит рестарт app (по правилам `dokku config:set`).
+
+Если на любом шаге происходит ошибка после шага 4 (state переименован) — операция останавливается, в логах указывается на каком шаге упало. Откат вручную возможен через `mv state/<new>/ state/<old>/` и пересоздание контейнера. Не делаем автоматический rollback — он сложнее самой операции.
+
+Если ambassador был активен у `<old>` — он удаляется на шаге 8 (как часть старого контейнера-окружения), и пересоздаётся для `<new>` если есть `EXPOSED_PORTS` в state.
 
 ### 3.2 Изменение конфигурации
 
@@ -441,7 +488,14 @@ echo "dokku-generic plugin installed"
 on:
   push:
     tags: ["*"]
-- softprops/action-gh-release@v3 с auto-changelog
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: softprops/action-gh-release@v3
+        with:
+          generate_release_notes: true
+          make_latest: "true"
 ```
 
 Установка пользователями:
@@ -647,8 +701,7 @@ sequenceDiagram
 
 Ниже перечислены вещи, **не входящие** в первую версию плагина. Если потребуется — добавятся отдельным циклом spec→plan.
 
-- Backup/restore (`backup`, `backup-schedule`, `import`, `export`) — нет универсальной семантики для произвольного образа.
-- Clone сервиса (`clone`) — мутный смысл для произвольных volumes; пользователь проще пересоздаст.
+- Backup/restore (`backup`, `backup-schedule`, `import`, `export`) — нет универсальной семантики для произвольного образа (БД использует свои dump-форматы; для произвольных volumes пользователь может бэкапить через `docker run --rm -v dokku.generic.<svc>:/data busybox tar -czf - /data`).
 - Multi-replica / master-replica режимы (как у dokku-postgres) — образ-специфично.
 - Web UI / health-check endpoint мониторинг — Dokku core не предоставляет, и мы не добавляем.
 - Auto-pull при старте сервиса — нагрузим только при `set --image`.
@@ -671,4 +724,6 @@ sequenceDiagram
 | `redis:connect lollipop` | `generic:exec lollipop redis-cli` | универсальный exec вместо специализированного connect |
 | `redis:link lollipop myapp` (`REDIS_URL=...`) | `generic:link lollipop myapp` (`LOLLIPOP_HOST/PORT/URL` + `LINK_ENV`) | префикс из имени сервиса, +кастомные через --link-env |
 | `redis:expose lollipop 6379` | `generic:expose lollipop 6379:6379` | через ambassador, как у redis |
+| `redis:clone lollipop new` | `generic:clone lollipop new [--copy-volumes]` | по умолчанию только конфиг, опционально с данными |
+| — (нет аналога) | `generic:rename old new` | переносит state, данные volumes, обновляет linked apps |
 | `redis:backup` и пр. | — | out of scope |
