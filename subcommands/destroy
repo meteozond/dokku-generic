@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+shift  # discard "generic:destroy"
+
+SERVICE=""
+# DOKKU_APPS_FORCE_DELETE=1 is set by dokku's global --force flag
+FORCE=0
+[[ "${DOKKU_APPS_FORCE_DELETE:-0}" == "1" ]] && FORCE=1
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -f|--force) FORCE=1; shift ;;
+    -*) dokku_log_fail "Unknown flag: $1" ;;
+    *)
+      if [[ -z "$SERVICE" ]]; then SERVICE="$1"; else dokku_log_fail "Unexpected: $1"; fi
+      shift ;;
+  esac
+done
+
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a valid name for the service"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name: $SERVICE"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+
+ROOT="$(service_root "$SERVICE")"
+CONTAINER="$(service_container_name "$SERVICE")"
+NETWORK="$(service_network_name "$SERVICE")"
+
+# Block destroy if linked (Plan 4 will populate LINKS; for Plan 1 LINKS may not exist)
+if [[ -s "$ROOT/LINKS" ]]; then
+  dokku_log_fail "Cannot delete linked service: $(tr '\n' ' ' < "$ROOT/LINKS")"
+fi
+
+if [[ $FORCE -ne 1 ]]; then
+  dokku_log_warn "WARNING: Potentially Destructive Action"
+  dokku_log_warn "This command will destroy $SERVICE $PLUGIN_SERVICE service."
+  dokku_log_warn "To proceed, type \"$SERVICE\""
+  echo ""
+  read -rp "> " confirmation
+  if [[ "$confirmation" != "$SERVICE" ]]; then
+    dokku_log_warn "Confirmation did not match $SERVICE. Aborted."
+    exit 1
+  fi
+fi
+
+dokku_log_info2_quiet "Deleting $SERVICE"
+
+# Stop & rm container
+"$DOCKER_BIN" container rm -f "$CONTAINER" >/dev/null 2>&1 || true
+
+# Stop & rm ambassador (Plan 5 will manage; here we just clean up if exists)
+"$DOCKER_BIN" container rm -f "${CONTAINER}.ambassador" >/dev/null 2>&1 || true
+
+# Remove named volumes belonging to this service
+# shellcheck disable=SC2063
+volumes=$("$DOCKER_BIN" volume ls --format '{{.Name}}' | grep "^${PLUGIN_VOLUME_PREFIX}\.${SERVICE}\(\$\|\.\)" || true)
+if [[ -n "$volumes" ]]; then
+  echo "$volumes" | xargs -r "$DOCKER_BIN" volume rm >/dev/null 2>&1 || true
+fi
+
+# Remove network
+"$DOCKER_BIN" network rm "$NETWORK" >/dev/null 2>&1 || true
+
+# Remove state
+rm -rf "$ROOT"
+
+dokku_log_info2 "$PLUGIN_SERVICE container deleted: $SERVICE"
