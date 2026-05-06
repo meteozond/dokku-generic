@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+services=$(fn-services-list)
+
+if [[ -z "$services" ]]; then
+  dokku_log_info1 "No generic services found"
+  exit 0
+fi
+
+printf '%-30s %-30s %-15s\n' "NAME" "IMAGE" "STATUS"
+while IFS= read -r service; do
+  [[ -z "$service" ]] && continue
+  local_image=$(cat "$(service_root "$service")/IMAGE" 2>/dev/null || echo "?")
+  status="unknown"
+  cname="$(service_container_name "$service")"
+  if "$DOCKER_BIN" container inspect "$cname" >/dev/null 2>&1; then
+    status=$("$DOCKER_BIN" container inspect -f '{{.State.Status}}' "$cname")
+  else
+    status="not exists"
+  fi
+  printf '%-30s %-30s %-15s\n' "$service" "$local_image" "$status"
+done <<< "$services"

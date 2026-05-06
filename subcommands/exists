@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+# args: $1 = "generic:exists" $2 = service
+SERVICE="${2:-}"
+
+if [[ -z "$SERVICE" ]]; then
+  dokku_log_fail "Please specify a valid name for the service"
+fi
+
+if service_exists "$SERVICE"; then
+  exit 0
+else
+  exit 1
+fi
