@@ -121,3 +121,49 @@ service_is_running() {
   container="$(service_container_name "$1")"
   [[ "$("$DOCKER_BIN" container inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" == "true" ]]
 }
+
+# Converts a service name to an UPPER_SNAKE environment variable prefix.
+# E.g. my-pg → MY_PG, my.pg → MY_PG, pg → PG.
+service_alias() {
+  local s="$1"
+  s="${s//-/_}"
+  s="${s//./_}"
+  printf '%s' "$s" | tr '[:lower:]' '[:upper:]'
+}
+
+# Returns the connection URL for the service: <scheme>://<container-dns>:<port>.
+# Returns empty string if PORT file is absent or empty.
+service_url() {
+  local service="$1"
+  local root port scheme
+  root="$(service_root "$service")"
+  port=""
+  scheme="tcp"
+  [[ -f "$root/PORT" ]]   && port=$(cat "$root/PORT")
+  [[ -f "$root/SCHEME" ]] && scheme=$(cat "$root/SCHEME")
+  [[ -z "$port" ]] && return 0
+  printf '%s://%s:%s' "$scheme" "$(service_container_name "$service")" "$port"
+}
+
+# Returns the next available alias for the app config, avoiding collisions.
+# If <base_alias>_URL is unset in the app config, returns <base_alias>.
+# Otherwise tries <base_alias>2, <base_alias>3, … up to 99.
+service_alternative_alias() {
+  local app="$1" base_alias="$2"
+  local existing
+  existing=$(dokku config:get "$app" "${base_alias}_URL" 2>/dev/null || true)
+  if [[ -z "$existing" ]]; then
+    printf '%s' "$base_alias"
+    return 0
+  fi
+  local i=2
+  while :; do
+    existing=$(dokku config:get "$app" "${base_alias}${i}_URL" 2>/dev/null || true)
+    if [[ -z "$existing" ]]; then
+      printf '%s%d' "$base_alias" "$i"
+      return 0
+    fi
+    ((i++))
+    [[ $i -gt 99 ]] && return 1
+  done
+}

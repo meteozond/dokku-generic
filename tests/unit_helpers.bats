@@ -472,3 +472,41 @@ EOF
   assert_failure
   rm -rf "$PLUGIN_DATA_ROOT"
 }
+
+@test "service_alias returns uppercase service name with - and . to _" {
+  run service_alias "my-svc"
+  assert_output "MY_SVC"
+}
+
+@test "service_alias handles dots" {
+  run service_alias "my.svc"
+  assert_output "MY_SVC"
+}
+
+@test "service_alias plain name uppercased" {
+  run service_alias "pg"
+  assert_output "PG"
+}
+
+@test "service_url returns scheme://container:port" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/pg"
+  echo "5432" > "$tmp/pg/PORT"
+  echo "postgres" > "$tmp/pg/SCHEME"
+  run service_url "pg"
+  assert_output "postgres://dokku-generic-pg:5432"
+  rm -rf "$tmp"
+}
+
+@test "service_url returns empty when no port" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/pg"
+  echo "tcp" > "$tmp/pg/SCHEME"
+  run service_url "pg"
+  assert_output ""
+  rm -rf "$tmp"
+}
