@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+shift
+OLD="${1:-}"
+NEW="${2:-}"
+
+[[ -z "$OLD" ]] && dokku_log_fail "Please specify old service name"
+[[ -z "$NEW" ]] && dokku_log_fail "Please specify new service name"
+verify_service_name "$OLD" || dokku_log_fail "Invalid old name"
+verify_service_name "$NEW" || dokku_log_fail "Invalid new name"
+service_exists "$OLD" || dokku_log_fail "Service $OLD does not exist"
+service_exists "$NEW" && dokku_log_fail "Service $NEW already exists"
+
+OLD_ROOT="$(service_root "$OLD")"
+NEW_ROOT="$(service_root "$NEW")"
+OLD_CONT="$(service_container_name "$OLD")"
+NEW_CONT="$(service_container_name "$NEW")"
+OLD_NET="$(service_network_name "$OLD")"
+NEW_NET="$(service_network_name "$NEW")"
+
+# Snapshot LINKS before any mutation
+OLD_LINKS=()
+if [[ -f "$OLD_ROOT/LINKS" ]]; then
+  while IFS= read -r app; do
+    [[ -n "$app" ]] && OLD_LINKS+=("$app")
+  done <"$OLD_ROOT/LINKS"
+fi
+
+# 1. Stop old container gracefully
+"$DOCKER_BIN" container stop -t "$PLUGIN_STOP_TIMEOUT" "$OLD_CONT" >/dev/null 2>&1 || true
+
+# 2. Move state directory (atomic on same filesystem)
+mv "$OLD_ROOT" "$NEW_ROOT"
+
+# 3. Create new network (service_restart_internal also creates it, but be explicit)
+"$DOCKER_BIN" network create "$NEW_NET" >/dev/null 2>&1 || true
+
+# 4. Copy named volumes to new names
+while IFS= read -r vol; do
+  [[ -z "$vol" ]] && continue
+  new_vol="${vol/${PLUGIN_VOLUME_PREFIX}.${OLD}/${PLUGIN_VOLUME_PREFIX}.${NEW}}"
+  copy_volume_data "$vol" "$new_vol"
+done < <(list_service_volumes "$OLD")
+
+# 5. Tear down old container, ambassadors, network, old volumes
+"$DOCKER_BIN" container rm -f "$OLD_CONT" >/dev/null 2>&1 || true
+while IFS= read -r amb; do
+  [[ -z "$amb" ]] && continue
+  "$DOCKER_BIN" container rm -f "$amb" >/dev/null 2>&1 || true
+done < <("$DOCKER_BIN" container ls -aq \
+  --filter "label=dokku.ambassador.service=$OLD" \
+  --format '{{.Names}}' 2>/dev/null)
+"$DOCKER_BIN" network rm "$OLD_NET" >/dev/null 2>&1 || true
+while IFS= read -r vol; do
+  [[ -z "$vol" ]] && continue
+  "$DOCKER_BIN" volume rm "$vol" >/dev/null 2>&1 || true
+done < <(list_service_volumes "$OLD")
+
+# 6. Start new container from moved state
+service_restart_internal "$NEW"
+
+# 7. Rebuild ambassadors for new service (no-op if no EXPOSED_PORTS)
+service_ambassador_rebuild "$NEW"
+
+# 8. Update all linked apps: docker-options + config keys
+OLD_ALIAS="$(service_alias "$OLD")"
+NEW_ALIAS="$(service_alias "$NEW")"
+
+for app in "${OLD_LINKS[@]}"; do
+  # Swap network docker-option
+  dokku docker-options:remove "$app" build,deploy,run "--network=$OLD_NET" >/dev/null 2>&1 || true
+  dokku docker-options:add "$app" build,deploy,run "--network=$NEW_NET"
+
+  # Single-pass config rewrite:
+  #   - Keys named <OLD_ALIAS>_{HOST,PORT,URL} are renamed to <NEW_ALIAS>_* and their
+  #     values have OLD_CONT → NEW_CONT substituted.
+  #   - Any remaining keys whose values reference OLD_CONT (e.g. LINK_ENV vars) get
+  #     their value updated in-place, but only if they were NOT already handled above
+  #     (avoids double-matching).
+  declare -a UNSET_KEYS=()
+  declare -a SET_PAIRS=()
+
+  while IFS='=' read -r k v; do
+    [[ -z "$k" ]] && continue
+    k="${k#export }"
+    v="${v#\"}"
+    v="${v%\"}"
+
+    case "$k" in
+      "${OLD_ALIAS}_HOST" | "${OLD_ALIAS}_PORT" | "${OLD_ALIAS}_URL")
+        # Rename key and update DNS in value
+        suffix="${k##"${OLD_ALIAS}"_}"
+        new_v="${v//$OLD_CONT/$NEW_CONT}"
+        UNSET_KEYS+=("$k")
+        SET_PAIRS+=("${NEW_ALIAS}_${suffix}=${new_v}")
+        ;;
+      *)
+        # Update value if it references the old container DNS
+        if [[ "$v" == *"$OLD_CONT"* ]]; then
+          new_v="${v//$OLD_CONT/$NEW_CONT}"
+          SET_PAIRS+=("$k=${new_v}")
+        fi
+        ;;
+    esac
+  done < <(dokku config:export --format=envfile "$app" 2>/dev/null)
+
+  if [[ ${#UNSET_KEYS[@]} -gt 0 ]]; then
+    dokku config:unset --no-restart "$app" "${UNSET_KEYS[@]}" >/dev/null 2>&1 || true
+  fi
+  if [[ ${#SET_PAIRS[@]} -gt 0 ]]; then
+    dokku config:set --no-restart "$app" "${SET_PAIRS[@]}"
+  fi
+
+  dokku ps:restart "$app" >/dev/null 2>&1 || true
+
+  unset UNSET_KEYS SET_PAIRS
+done
+
+dokku_log_info2 "Renamed $OLD -> $NEW"

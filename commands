@@ -39,11 +39,12 @@ $(cmd_promote_help | head -3)
 $(cmd_expose_help | head -3)
 $(cmd_unexpose_help | head -3)
 $(cmd_clone_help | head -3)
+$(cmd_rename_help | head -3)
 
 For full help on a command: dokku generic:<command> --help (TBD in Plan 8)
 EOF
     ;;
-  generic:create | generic:destroy | generic:exists | generic:list | generic:info | generic:config | generic:set | generic:unset | generic:upgrade | generic:start | generic:stop | generic:restart | generic:pause | generic:enter | generic:exec | generic:logs | generic:link | generic:unlink | generic:linked | generic:links | generic:app-links | generic:promote | generic:expose | generic:unexpose | generic:clone)
+  generic:create | generic:destroy | generic:exists | generic:list | generic:info | generic:config | generic:set | generic:unset | generic:upgrade | generic:start | generic:stop | generic:restart | generic:pause | generic:enter | generic:exec | generic:logs | generic:link | generic:unlink | generic:linked | generic:links | generic:app-links | generic:promote | generic:expose | generic:unexpose | generic:clone | generic:rename)
     SUBCOMMAND="${1#generic:}"
     if [[ -x "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" ]]; then
       "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" "$@"

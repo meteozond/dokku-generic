@@ -220,3 +220,12 @@ With --copy-volumes, named volume data is copied via busybox.
 Linked apps are NOT cloned. Override flags accepted (same as create).
 EOF
 }
+
+cmd_rename_help() {
+  cat <<EOF
+generic:rename <old> <new>
+
+Rename a service. Moves state, copies volumes, updates docker-options
+and config of all linked apps.
+EOF
+}
