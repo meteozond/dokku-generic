@@ -41,8 +41,9 @@ echo "tcp" > "$ROOT/SCHEME"
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$ROOT/CREATED_AT"
 
 cleanup_on_fail() {
-  rm -rf "$ROOT"
+  "$DOCKER_BIN" container rm -f "$CONTAINER" >/dev/null 2>&1 || true
   "$DOCKER_BIN" network rm "$NETWORK" >/dev/null 2>&1 || true
+  rm -rf "$ROOT"
 }
 trap cleanup_on_fail ERR
 
