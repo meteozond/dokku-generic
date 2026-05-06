@@ -78,3 +78,48 @@ env_to_docker_args() {
     printf -- '-e %s=%s ' "$key" "$(env_unescape "$val")"
   done < "$file"
 }
+
+# parse_mount_spec: returns "TYPE|SOURCE|TARGET|MODE"
+#   TYPE: bind | named
+#   SOURCE: host path (bind), volume name (named with explicit), or empty (named auto)
+#   TARGET: container path
+#   MODE: rw (default) or ro
+parse_mount_spec() {
+  local spec="$1"
+  [[ -z "$spec" ]] && return 1
+
+  local mode="rw"
+  if [[ "$spec" == *:ro ]]; then
+    mode="ro"
+    spec="${spec%:ro}"
+  elif [[ "$spec" == *:rw ]]; then
+    mode="rw"
+    spec="${spec%:rw}"
+  fi
+
+  if [[ "$spec" != *:* ]]; then
+    # plain "/container/path" — must start with /
+    [[ "$spec" == /* ]] || return 1
+    printf 'named||%s|%s' "$spec" "$mode"
+    return 0
+  fi
+
+  local source="${spec%%:*}"
+  local target="${spec#*:}"
+
+  [[ -z "$target" ]] && return 1
+  [[ "$target" != /* ]] && return 1
+
+  if [[ "$source" == /* ]]; then
+    printf 'bind|%s|%s|%s' "$source" "$target" "$mode"
+  else
+    printf 'named|%s|%s|%s' "$source" "$target" "$mode"
+  fi
+}
+
+mount_volume_name() {
+  local service="$1" container_path="$2"
+  local hash
+  hash=$(printf '%s' "$container_path" | sha1sum | cut -c1-12)
+  printf '%s.%s.%s' "$PLUGIN_VOLUME_PREFIX" "$service" "$hash"
+}

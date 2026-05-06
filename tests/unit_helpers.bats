@@ -207,3 +207,58 @@ setup() {
   assert_success
   assert_output ""
 }
+
+@test "parse_mount_spec returns container_path only when spec is plain path" {
+  run parse_mount_spec "/var/lib/data"
+  assert_success
+  assert_output "named||/var/lib/data|rw"
+}
+
+@test "parse_mount_spec parses host:container as bind" {
+  run parse_mount_spec "/host/path:/container/path"
+  assert_success
+  assert_output "bind|/host/path|/container/path|rw"
+}
+
+@test "parse_mount_spec parses name:container as named with custom name" {
+  run parse_mount_spec "myvol:/container/path"
+  assert_success
+  assert_output "named|myvol|/container/path|rw"
+}
+
+@test "parse_mount_spec accepts :ro suffix" {
+  run parse_mount_spec "/host:/container:ro"
+  assert_success
+  assert_output "bind|/host|/container|ro"
+}
+
+@test "parse_mount_spec accepts :rw suffix" {
+  run parse_mount_spec "/host:/container:rw"
+  assert_success
+  assert_output "bind|/host|/container|rw"
+}
+
+@test "parse_mount_spec rejects empty" {
+  run parse_mount_spec ""
+  assert_failure
+}
+
+@test "parse_mount_spec rejects spec without leading slash and without colon" {
+  run parse_mount_spec "notapath"
+  assert_failure
+}
+
+@test "mount_volume_name produces stable sha1-based name for plain path" {
+  local n1 n2
+  n1=$(mount_volume_name "myservice" "/var/lib/data")
+  n2=$(mount_volume_name "myservice" "/var/lib/data")
+  [[ "$n1" == "$n2" ]] || flunk "expected stable name, got $n1 != $n2"
+  [[ "$n1" =~ ^dokku\.generic\.myservice\.[a-f0-9]{12}$ ]] || flunk "unexpected format: $n1"
+}
+
+@test "mount_volume_name differs for different paths" {
+  local n1 n2
+  n1=$(mount_volume_name "myservice" "/var/lib/data")
+  n2=$(mount_volume_name "myservice" "/etc/conf")
+  [[ "$n1" != "$n2" ]] || flunk "expected different, both got $n1"
+}
