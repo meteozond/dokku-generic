@@ -26,3 +26,37 @@ env_escape() {
 env_unescape() {
   printf '%b' "$1"
 }
+
+env_set() {
+  local file="$1" key="$2" value="$3"
+  local dir
+  dir="$(dirname "$file")"
+  mkdir -p "$dir"
+  local tmp
+  tmp="$(mktemp "$dir/.env.XXXXXX")"
+  if [[ -f "$file" ]]; then
+    grep -v "^${key}=" "$file" > "$tmp" || true
+  fi
+  printf '%s=%s\n' "$key" "$(env_escape "$value")" >> "$tmp"
+  mv "$tmp" "$file"
+}
+
+env_get() {
+  local file="$1" key="$2"
+  [[ -f "$file" ]] || return 0
+  local line
+  line=$(grep "^${key}=" "$file" | head -n1)
+  [[ -z "$line" ]] && return 0
+  env_unescape "${line#${key}=}"
+}
+
+env_unset() {
+  local file="$1" key="$2"
+  [[ -f "$file" ]] || return 0
+  local dir
+  dir="$(dirname "$file")"
+  local tmp
+  tmp="$(mktemp "$dir/.env.XXXXXX")"
+  grep -v "^${key}=" "$file" > "$tmp" || true
+  mv "$tmp" "$file"
+}

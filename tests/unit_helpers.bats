@@ -83,3 +83,84 @@ setup() {
   run env_unescape "$escaped"
   assert_output "$input"
 }
+
+@test "env_set creates ENV file with key=value" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "FOO" "bar"
+  run cat "$tmp/ENV"
+  assert_output "FOO=bar"
+  rm -rf "$tmp"
+}
+
+@test "env_set updates existing key" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "FOO" "bar"
+  env_set "$tmp/ENV" "FOO" "baz"
+  run cat "$tmp/ENV"
+  assert_output "FOO=baz"
+  rm -rf "$tmp"
+}
+
+@test "env_set escapes newlines in value" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "FOO" $'line1\nline2'
+  run cat "$tmp/ENV"
+  assert_output 'FOO=line1\nline2'
+  rm -rf "$tmp"
+}
+
+@test "env_set preserves other keys when updating" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "A" "1"
+  env_set "$tmp/ENV" "B" "2"
+  env_set "$tmp/ENV" "A" "11"
+  run cat "$tmp/ENV"
+  assert_contains "$output" "A=11"
+  assert_contains "$output" "B=2"
+  rm -rf "$tmp"
+}
+
+@test "env_get returns unescaped value" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "FOO" $'a\nb'
+  run env_get "$tmp/ENV" "FOO"
+  assert_output $'a\nb'
+  rm -rf "$tmp"
+}
+
+@test "env_get returns empty on missing key" {
+  local tmp
+  tmp=$(mktemp -d)
+  echo "OTHER=value" > "$tmp/ENV"
+  run env_get "$tmp/ENV" "MISSING"
+  assert_success
+  assert_output ""
+  rm -rf "$tmp"
+}
+
+@test "env_unset removes key" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "A" "1"
+  env_set "$tmp/ENV" "B" "2"
+  env_unset "$tmp/ENV" "A"
+  run cat "$tmp/ENV"
+  assert_output "B=2"
+  rm -rf "$tmp"
+}
+
+@test "env_unset is no-op when key absent" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "A" "1"
+  run env_unset "$tmp/ENV" "MISSING"
+  assert_success
+  run cat "$tmp/ENV"
+  assert_output "A=1"
+  rm -rf "$tmp"
+}
