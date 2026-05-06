@@ -13,12 +13,13 @@ help:
 	@echo "  act                - run all act jobs"
 
 SCRIPTS := commands install update config $(wildcard subcommands/*) common-functions functions help-functions service-list pre-start pre-delete post-app-clone-setup post-app-rename-setup
+EXISTING_SCRIPTS := $(wildcard $(SCRIPTS))
 
 shellcheck:
-	@for f in $(SCRIPTS); do [ -e "$$f" ] && shellcheck -x "$$f" || true; done
+	@for f in $(EXISTING_SCRIPTS); do shellcheck -x "$$f"; done
 
 shfmt:
-	shfmt -d -i 2 -ci $(SCRIPTS)
+	@if [ -n "$(EXISTING_SCRIPTS)" ]; then shfmt -d -i 2 -ci $(EXISTING_SCRIPTS); fi
 
 lint: shellcheck shfmt
 
