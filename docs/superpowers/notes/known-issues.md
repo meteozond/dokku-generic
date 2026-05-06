@@ -48,6 +48,16 @@
 
 - [ ] **Нет теста на `logs -f` (follow)** — потребует backgrounding с timeout, чтобы тест не висел вечно. Когда установится `timeout`-pattern для bats — добавить. Файл: `tests/service_logs.bats`.
 
+## Plan 4 — Linking
+
+- [ ] **`generic:links <app>` не валидирует app**. `linked <service>` ругается на несуществующий сервис, а `links <app>` молча возвращает "(no services linked)" даже если apps:exists false. Асимметрия маскирует опечатки. Добавить `dokku apps:exists "$APP"` guard. Файл: `subcommands/links`.
+
+- [ ] **`--alias EXPLICIT` пропускается через `service_alternative_alias` и auto-bump'ится на конфликт.** Семантика `--alias` — "use this exact prefix", но текущая реализация при коллизии превращает `--alias DATABASE` в `DATABASE2`. Тесты Plan 4 этого требуют (test "generates alternative prefix when default occupied" использует `--alias TESTPG` намеренно для bump'а). Решить — оставить как есть (документировать в help) или сделать explicit alias строгим (fail при конфликте). Файл: `subcommands/link`.
+
+- [ ] **Plan 4 не сохраняет resolved alias в state.** `unlink`/`promote` ищут "наши" config-keys по совпадению значения с DNS-именем сервиса. Работает, но fragile если `LINK_ENV`-значения не содержат DNS. Завести `$ROOT/APPS/$APP.alias` per-app файл при link, читать при unlink/promote. Это закроет также минорный issue с `--alias`. Файлы: `subcommands/link`, `subcommands/unlink`, `subcommands/promote`.
+
+- [ ] **`subcommands/promote` имеет dead code** (lines 60, 100): `ROOT_PREFIX` присваивается через `${OUR_PREFIX%%[0-9]*}` и сразу перезаписывается через sed; `service_alternative_alias` вызывается и результат игнорируется в пользу manual loop. Не баг, но мешает читать. Подчистить когда руки дойдут. Файл: `subcommands/promote`.
+
 ## Кросс-плановые / архитектурные
 
 - [ ] **`tests/test_helper.bash` дублирует переменные из `config`** (PLUGIN_NETWORK_PREFIX, PLUGIN_VOLUME_PREFIX, etc.) вместо source `config`. Дрейф вероятен. Заменить на `source "$PLUGIN_BASE_PATH/config"` и убрать дубликаты. Файл: `tests/test_helper.bash`.

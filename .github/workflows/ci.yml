@@ -62,7 +62,7 @@ jobs:
       - name: Run bats integration tests
         run: |
           docker exec dokku-generic-test bash -c '
-            bats /var/lib/dokku/plugins/available/generic/tests/service_*.bats
+            bats /var/lib/dokku/plugins/available/generic/tests/service_*.bats /var/lib/dokku/plugins/available/generic/tests/link_networks.bats
           '
       - name: Tear down Dokku
         if: always()
