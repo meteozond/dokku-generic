@@ -56,8 +56,11 @@ dokku_log_info2_quiet "Deleting $SERVICE"
 # Stop & rm container
 "$DOCKER_BIN" container rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
-# Stop & rm ambassador (Plan 5 will manage; here we just clean up if exists)
-"$DOCKER_BIN" container rm -f "${CONTAINER}.ambassador" >/dev/null 2>&1 || true
+# Stop & rm all per-port ambassadors of this service
+while IFS= read -r amb; do
+  [[ -z "$amb" ]] && continue
+  "$DOCKER_BIN" container rm -f "$amb" >/dev/null 2>&1 || true
+done < <("$DOCKER_BIN" container ls -aq --filter "label=dokku.ambassador.service=$SERVICE" --format '{{.Names}}' 2>/dev/null)
 
 # Remove named volumes belonging to this service
 # shellcheck disable=SC2063

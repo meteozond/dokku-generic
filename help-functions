@@ -193,3 +193,12 @@ When app has multiple linked services with the same alias prefix, promote
 the given service to primary (PREFIX_*). The previous primary moves to PREFIX2_*.
 EOF
 }
+
+cmd_expose_help() {
+  cat <<EOF
+generic:expose <service> <host_port>:<container_port>
+
+Open service port on host via ambassador container. Does not restart service.
+Idempotent — safe to call multiple times for the same spec.
+EOF
+}
