@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+shift
+SOURCE=""
+TARGET=""
+COPY_VOLUMES=0
+declare -a OVERRIDE_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --copy-volumes)
+      COPY_VOLUMES=1
+      shift
+      ;;
+    --env | --link-env | --mount | --port | --scheme | --cmd | --entrypoint | --docker-arg | --expose)
+      OVERRIDE_ARGS+=("$1" "$2")
+      shift 2
+      ;;
+    --env=* | --link-env=* | --mount=* | --port=* | --scheme=* | --cmd=* | --entrypoint=* | --docker-arg=* | --expose=*)
+      OVERRIDE_ARGS+=("$1")
+      shift
+      ;;
+    -*)
+      dokku_log_fail "Unknown flag: $1"
+      ;;
+    *)
+      if [[ -z "$SOURCE" ]]; then
+        SOURCE="$1"
+      elif [[ -z "$TARGET" ]]; then
+        TARGET="$1"
+      else
+        dokku_log_fail "Unexpected: $1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+[[ -z "$SOURCE" ]] && dokku_log_fail "Please specify source service"
+[[ -z "$TARGET" ]] && dokku_log_fail "Please specify target service name"
+verify_service_name "$SOURCE" || dokku_log_fail "Invalid source name"
+verify_service_name "$TARGET" || dokku_log_fail "Invalid target name"
+service_exists "$SOURCE" || dokku_log_fail "Source $SOURCE does not exist"
+service_exists "$TARGET" && dokku_log_fail "Target $TARGET already exists"
+
+SOURCE_ROOT="$(service_root "$SOURCE")"
+TARGET_ROOT="$(service_root "$TARGET")"
+
+# Copy state directory
+cp -a "$SOURCE_ROOT" "$TARGET_ROOT"
+
+# Reset per-instance fields
+rm -f "$TARGET_ROOT/LINKS" "$TARGET_ROOT/EXPOSED_PORTS" "$TARGET_ROOT/ID"
+date -u +"%Y-%m-%dT%H:%M:%SZ" >"$TARGET_ROOT/CREATED_AT"
+
+# Copy volumes if requested (must happen before container start so target mounts use copied data)
+if [[ $COPY_VOLUMES -eq 1 ]]; then
+  while IFS= read -r vol; do
+    [[ -z "$vol" ]] && continue
+    # Replace the source service portion of the volume name with the target name
+    new_vol="${vol/${PLUGIN_VOLUME_PREFIX}.${SOURCE}/${PLUGIN_VOLUME_PREFIX}.${TARGET}}"
+    copy_volume_data "$vol" "$new_vol"
+  done < <(list_service_volumes "$SOURCE")
+fi
+
+# Create network and start container
+NETWORK="$(service_network_name "$TARGET")"
+"$DOCKER_BIN" network inspect "$NETWORK" >/dev/null 2>&1 ||
+  "$DOCKER_BIN" network create "$NETWORK" >/dev/null
+
+service_restart_internal "$TARGET"
+
+# Apply override flags via the set subcommand (restarts again if service is running)
+if [[ ${#OVERRIDE_ARGS[@]} -gt 0 ]]; then
+  "$PLUGIN_BASE_PATH/subcommands/set" "generic:set" "$TARGET" "${OVERRIDE_ARGS[@]}"
+fi
+
+dokku_log_info2 "Cloned $SOURCE -> $TARGET"

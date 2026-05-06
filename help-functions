@@ -210,3 +210,13 @@ generic:unexpose <service> <host_port>:<container_port>
 Remove a port mapping for service. Tears down its per-port ambassador.
 EOF
 }
+
+cmd_clone_help() {
+  cat <<EOF
+generic:clone <source> <new> [--copy-volumes] [override flags]
+
+Copy a service to a new name. By default volumes are empty.
+With --copy-volumes, named volume data is copied via busybox.
+Linked apps are NOT cloned. Override flags accepted (same as create).
+EOF
+}
