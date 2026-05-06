@@ -184,3 +184,12 @@ generic:app-links <app>
 Alias of generic:links. Lists services linked to an app.
 EOF
 }
+
+cmd_promote_help() {
+  cat <<EOF
+generic:promote <service> <app>
+
+When app has multiple linked services with the same alias prefix, promote
+the given service to primary (PREFIX_*). The previous primary moves to PREFIX2_*.
+EOF
+}

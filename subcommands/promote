@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+shift
+SERVICE="${1:-}"
+APP="${2:-}"
+
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a service"
+[[ -z "$APP" ]] && dokku_log_fail "Please specify an app"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+
+DNS="$(service_container_name "$SERVICE")"
+
+# Read all app config as KEY=VALUE pairs
+declare -A APP_CONFIG=()
+while IFS='=' read -r key val; do
+  [[ -z "$key" ]] && continue
+  key="${key#export }"
+  val="${val#\'}"
+  val="${val%\'}"
+  APP_CONFIG["$key"]="$val"
+done < <(dokku config:export --format=envfile "$APP" 2>/dev/null || true)
+
+# Find keys whose value references THIS service's DNS name
+declare -a OUR_KEYS=()
+for k in "${!APP_CONFIG[@]}"; do
+  v="${APP_CONFIG[$k]}"
+  if [[ "$v" == *"$DNS"* ]]; then
+    OUR_KEYS+=("$k")
+  fi
+done
+
+if [[ ${#OUR_KEYS[@]} -eq 0 ]]; then
+  dokku_log_fail "Service $SERVICE is not linked to $APP"
+fi
+
+# Derive the current prefix for our service from its HOST key
+# e.g. PG2_HOST → prefix PG2
+OUR_PREFIX=""
+for k in "${OUR_KEYS[@]}"; do
+  if [[ "$k" =~ _HOST$ ]]; then
+    OUR_PREFIX="${k%_HOST}"
+    break
+  fi
+done
+
+if [[ -z "$OUR_PREFIX" ]]; then
+  dokku_log_fail "Could not determine alias prefix for $SERVICE in $APP"
+fi
+
+# Derive the root prefix by stripping trailing digits
+# e.g. PG2 → PG, PG → PG, DATABASE3 → DATABASE
+ROOT_PREFIX="${OUR_PREFIX%%[0-9]*}"
+# If OUR_PREFIX has no trailing digits, strip trailing digits differently
+# Actually: remove all trailing digits from OUR_PREFIX
+ROOT_PREFIX="$(printf '%s' "$OUR_PREFIX" | sed 's/[0-9]*$//')"
+
+if [[ -z "$ROOT_PREFIX" ]]; then
+  ROOT_PREFIX="$OUR_PREFIX"
+fi
+
+# If we are already the primary (OUR_PREFIX == ROOT_PREFIX and ROOT_PREFIX_HOST == DNS)
+if [[ "$OUR_PREFIX" == "$ROOT_PREFIX" ]]; then
+  dokku_log_info1 "$SERVICE is already the primary alias for $APP"
+  exit 0
+fi
+
+# Check ROOT_PREFIX_HOST to find the current primary service
+PRIMARY_HOST_VAL="${APP_CONFIG[${ROOT_PREFIX}_HOST]:-}"
+
+if [[ -z "$PRIMARY_HOST_VAL" ]]; then
+  # No current primary; just rename our keys from OUR_PREFIX_* to ROOT_PREFIX_*
+  declare -a TO_SET=()
+  declare -a TO_UNSET=()
+  for suffix in HOST PORT URL; do
+    k="${OUR_PREFIX}_${suffix}"
+    if [[ -n "${APP_CONFIG[$k]:-}" ]]; then
+      TO_SET+=("${ROOT_PREFIX}_${suffix}=${APP_CONFIG[$k]}")
+      TO_UNSET+=("$k")
+    fi
+  done
+  if [[ ${#TO_UNSET[@]} -gt 0 ]]; then
+    dokku config:unset --no-restart "$APP" "${TO_UNSET[@]}" >/dev/null 2>&1 || true
+  fi
+  if [[ ${#TO_SET[@]} -gt 0 ]]; then
+    dokku config:set "$APP" "${TO_SET[@]}"
+  fi
+  dokku_log_info2 "Promoted $SERVICE to primary for $APP"
+  exit 0
+fi
+
+# Find a free alternative slot for the current primary service
+ALT_ALIAS="$(service_alternative_alias "$APP" "$ROOT_PREFIX")"
+
+# Temporarily clear ROOT_PREFIX_URL so service_alternative_alias can find a free slot
+# Actually service_alternative_alias checks if ROOT_PREFIX_URL is free — it isn't (occupied by
+# current primary). We need ALT for the OTHER service — so after we clear ROOT_PREFIX_* and
+# set our keys there, the other service needs a home. Find the next free slot AFTER ROOT_PREFIX.
+# service_alternative_alias returns ROOT_PREFIX if _URL is free, otherwise ROOT_PREFIX2, etc.
+# Since ROOT_PREFIX_URL is set, it will return ROOT_PREFIX2 (or higher). But OUR_PREFIX might
+# be ROOT_PREFIX2 already — we need to be careful.
+
+# The ALT slot must not be OUR_PREFIX (we're vacating that).
+# service_alternative_alias looks at APP_CONFIG live — OUR_PREFIX_URL is currently set.
+# We want the first slot that is NOT ROOT_PREFIX and NOT occupied by someone else.
+# Simple approach: iterate manually to find a free slot excluding OUR_PREFIX.
+i=2
+while :; do
+  candidate="${ROOT_PREFIX}${i}"
+  existing="${APP_CONFIG[${candidate}_URL]:-}"
+  if [[ -z "$existing" || "$candidate" == "$OUR_PREFIX" ]]; then
+    # candidate is either free, or it's OUR_PREFIX which we are vacating
+    if [[ "$candidate" != "$OUR_PREFIX" || -z "$existing" ]]; then
+      ALT_ALIAS="$candidate"
+      break
+    fi
+    # OUR_PREFIX is candidate but has a value (we'll be vacating it) — use it
+    ALT_ALIAS="$candidate"
+    break
+  fi
+  ((i++))
+  [[ $i -gt 99 ]] && dokku_log_fail "Could not find free alias slot for $APP"
+done
+
+# Build the swap operations:
+# 1. OTHER service (currently ROOT_PREFIX_*): move to ALT_ALIAS_*
+# 2. OUR service (currently OUR_PREFIX_*): move to ROOT_PREFIX_*
+declare -a TO_SET=()
+declare -a TO_UNSET=()
+
+for suffix in HOST PORT URL; do
+  # Move current primary's keys to ALT_ALIAS
+  pk="${ROOT_PREFIX}_${suffix}"
+  if [[ -n "${APP_CONFIG[$pk]:-}" ]]; then
+    TO_SET+=("${ALT_ALIAS}_${suffix}=${APP_CONFIG[$pk]}")
+    TO_UNSET+=("$pk")
+  fi
+
+  # Move our keys to ROOT_PREFIX
+  ok="${OUR_PREFIX}_${suffix}"
+  if [[ -n "${APP_CONFIG[$ok]:-}" ]]; then
+    TO_SET+=("${ROOT_PREFIX}_${suffix}=${APP_CONFIG[$ok]}")
+    TO_UNSET+=("$ok")
+  fi
+done
+
+# Execute: unset old keys (no restart), then set new keys (single restart)
+if [[ ${#TO_UNSET[@]} -gt 0 ]]; then
+  dokku config:unset --no-restart "$APP" "${TO_UNSET[@]}" >/dev/null 2>&1 || true
+fi
+if [[ ${#TO_SET[@]} -gt 0 ]]; then
+  dokku config:set "$APP" "${TO_SET[@]}"
+fi
+
+dokku_log_info2 "Promoted $SERVICE to primary for $APP"
