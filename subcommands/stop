@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+shift
+SERVICE="${1:-}"
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a valid name for the service"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+
+CONTAINER="$(service_container_name "$SERVICE")"
+
+if "$DOCKER_BIN" container inspect "$CONTAINER" >/dev/null 2>&1; then
+  "$DOCKER_BIN" container stop -t "$PLUGIN_STOP_TIMEOUT" "$CONTAINER" >/dev/null 2>&1 || true
+fi
+dokku_log_info2 "Stopped $SERVICE"

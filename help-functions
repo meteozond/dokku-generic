@@ -85,3 +85,10 @@ generic:start <service>
 Start a stopped service. No-op if running. Recreates from state if container missing.
 EOF
 }
+
+cmd_stop_help() { cat <<EOF
+generic:stop <service>
+
+Stop a running service. No-op if already stopped. Container kept for fast restart.
+EOF
+}
