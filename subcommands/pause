@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+shift
+SERVICE="${1:-}"
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a valid name for the service"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+
+CONTAINER="$(service_container_name "$SERVICE")"
+status=$("$DOCKER_BIN" container inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || echo "")
+
+case "$status" in
+  paused)  "$DOCKER_BIN" container unpause "$CONTAINER" >/dev/null; dokku_log_info2 "Unpaused $SERVICE" ;;
+  running) "$DOCKER_BIN" container pause "$CONTAINER" >/dev/null; dokku_log_info2 "Paused $SERVICE" ;;
+  *)       dokku_log_fail "Service $SERVICE is not running (status: $status)" ;;
+esac

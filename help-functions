@@ -99,3 +99,10 @@ generic:restart <service>
 Recreate container with current state. Reads IMAGE/ENV/MOUNTS/etc fresh.
 EOF
 }
+
+cmd_pause_help() { cat <<EOF
+generic:pause <service>
+
+Toggle pause/unpause on a running or paused container. Useful for debugging.
+EOF
+}
