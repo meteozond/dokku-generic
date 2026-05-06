@@ -78,3 +78,10 @@ generic:upgrade <service> <new-image[:tag]>
 Update service to a new image. Alias for: set --image. Restarts container.
 EOF
 }
+
+cmd_start_help() { cat <<EOF
+generic:start <service>
+
+Start a stopped service. No-op if running. Recreates from state if container missing.
+EOF
+}

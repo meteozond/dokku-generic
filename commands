@@ -23,11 +23,12 @@ $(cmd_config_help | head -3)
 $(cmd_set_help | head -3)
 $(cmd_unset_help | head -3)
 $(cmd_upgrade_help | head -3)
+$(cmd_start_help | head -3)
 
 For full help on a command: dokku generic:<command> --help (TBD in Plan 8)
 EOF
     ;;
-  generic:create|generic:destroy|generic:exists|generic:list|generic:info|generic:config|generic:set|generic:unset|generic:upgrade)
+  generic:create|generic:destroy|generic:exists|generic:list|generic:info|generic:config|generic:set|generic:unset|generic:upgrade|generic:start)
     SUBCOMMAND="${1#generic:}"
     if [[ -x "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" ]]; then
       "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" "$@"
