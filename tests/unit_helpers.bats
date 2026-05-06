@@ -164,3 +164,46 @@ setup() {
   assert_output "A=1"
   rm -rf "$tmp"
 }
+
+@test "env_list outputs all key=value pairs" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "A" "1"
+  env_set "$tmp/ENV" "B" "two"
+  run env_list "$tmp/ENV"
+  assert_contains "$output" "A=1"
+  assert_contains "$output" "B=two"
+  rm -rf "$tmp"
+}
+
+@test "env_list outputs empty for missing file" {
+  run env_list "/nonexistent/ENV"
+  assert_success
+  assert_output ""
+}
+
+@test "env_to_docker_args produces -e KEY=VALUE pairs" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "FOO" "bar"
+  env_set "$tmp/ENV" "BAZ" "qux"
+  run env_to_docker_args "$tmp/ENV"
+  assert_contains "$output" "-e FOO=bar"
+  assert_contains "$output" "-e BAZ=qux"
+  rm -rf "$tmp"
+}
+
+@test "env_to_docker_args unescapes values" {
+  local tmp
+  tmp=$(mktemp -d)
+  env_set "$tmp/ENV" "MULTILINE" $'line1\nline2'
+  run env_to_docker_args "$tmp/ENV"
+  assert_contains "$output" $'-e MULTILINE=line1\nline2'
+  rm -rf "$tmp"
+}
+
+@test "env_to_docker_args is empty for missing file" {
+  run env_to_docker_args "/nonexistent/ENV"
+  assert_success
+  assert_output ""
+}

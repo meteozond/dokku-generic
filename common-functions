@@ -60,3 +60,21 @@ env_unset() {
   grep -v "^${key}=" "$file" > "$tmp" || true
   mv "$tmp" "$file"
 }
+
+env_list() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  cat "$file"
+}
+
+env_to_docker_args() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  local line key val
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    printf -- '-e %s=%s ' "$key" "$(env_unescape "$val")"
+  done < "$file"
+}
