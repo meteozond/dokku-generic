@@ -461,7 +461,189 @@ sudo dokku plugin:install https://github.com/<owner>/dokku-generic.git generic
 4. Полный command reference (как у dokku-redis): по разделу на каждую подкоманду с описанием, флагами и примером.
 5. Раздел "Differences from dokku-redis" — для пользователей, мигрирующих привычку.
 
-## 7. Out of scope
+## 7. C4-диаграммы
+
+### 7.1 Level 1 — Context
+
+Кто взаимодействует с плагином и через что.
+
+```mermaid
+flowchart TB
+    operator(["👤 Dokku Operator<br/>SSH в dokku-сервер"])
+    user(["👤 App Developer<br/>деплоит app через git push"])
+
+    subgraph host["🖥️ Dokku Host"]
+        dokku["Dokku CLI/Core<br/>──────<br/>принимает команды,<br/>триггерит lifecycle hooks"]
+        plugin["dokku-generic plugin<br/>──────<br/>универсальный сервис-плагин"]
+        docker["Docker Engine<br/>──────<br/>контейнеры, сети,<br/>volumes"]
+    end
+
+    operator -- "dokku generic:create / link / exec / ..." --> dokku
+    user -- "git push dokku main" --> dokku
+    dokku -- "команды и hooks" --> plugin
+    plugin -- "docker run / network / volume / exec" --> docker
+
+    classDef person fill:#08427b,color:#fff,stroke:#073055
+    classDef system fill:#1168bd,color:#fff,stroke:#0d5aa7
+    classDef external fill:#999,color:#fff,stroke:#7a7a7a
+    class operator,user person
+    class plugin system
+    class dokku,docker external
+```
+
+### 7.2 Level 2 — Container (топология одного сервиса)
+
+Что появляется в Docker, когда оператор делает `generic:create + expose + link <app>`.
+
+```mermaid
+flowchart TB
+    subgraph host["🖥️ Dokku Host"]
+        cli["Dokku CLI<br/>(generic:* команды)"]
+
+        subgraph state["📁 /var/lib/dokku/services/generic/&lt;svc&gt;/"]
+            files["IMAGE · PORT · SCHEME<br/>ENV · LINK_ENV · MOUNTS<br/>LINKS · EXPOSED_PORTS<br/>CMD · ENTRYPOINT · DOCKER_ARGS"]
+        end
+
+        subgraph network["🌐 Docker network: dokku-generic-&lt;svc&gt;"]
+            svc["📦 dokku-generic-&lt;svc&gt;<br/>──────<br/>пользовательский образ<br/>--restart unless-stopped<br/>aliases: &lt;svc&gt;"]
+            amb["📦 ambassador<br/>──────<br/>dokku/ambassador<br/>socat-proxy"]
+            app["📦 app container<br/>──────<br/>--network через<br/>docker-options"]
+        end
+
+        subgraph volumes["💾 Named volumes"]
+            v1["dokku.generic.&lt;svc&gt;<br/>(default volume)"]
+            v2["dokku.generic.&lt;svc&gt;.&lt;sha1&gt;<br/>(дополнительные --mount)"]
+        end
+
+        host_port(["🌍 :HOST_PORT хоста"])
+    end
+
+    cli -- "чтение/запись<br/>(atomic tmp+rename)" --> files
+    cli -- "docker run / start / stop /<br/>network connect / volume create" --> svc
+    cli -- "docker run -p HOST:CONTAINER" --> amb
+
+    files -. "при start читаются" .-> svc
+    svc -- "DNS: &lt;svc&gt; / dokku-generic-&lt;svc&gt;" --> app
+    amb -- "TCP proxy" --> svc
+    host_port -- "expose" --> amb
+
+    svc --- v1
+    svc --- v2
+
+    classDef state fill:#fff3e0,stroke:#e65100,color:#333
+    classDef container fill:#bbdefb,stroke:#0d47a1,color:#000
+    classDef volume fill:#e1bee7,stroke:#4a148c,color:#000
+    classDef external fill:#c8e6c9,stroke:#1b5e20,color:#000
+    class files state
+    class svc,amb,app container
+    class v1,v2 volume
+    class cli,host_port external
+```
+
+### 7.3 Level 3 — Component (внутри плагина)
+
+Что лежит в репе и кто что вызывает.
+
+```mermaid
+flowchart TB
+    subgraph plugin["📦 dokku-generic plugin"]
+        cmds["commands<br/>──────<br/>CLI dispatcher: парсит<br/>generic:&lt;cmd&gt; и вызывает<br/>subcommands/&lt;cmd&gt;"]
+
+        subgraph sub["subcommands/"]
+            lifecycle["create · destroy · upgrade<br/>start · stop · restart · pause"]
+            config_cmds["set · unset · info · config · list · exists"]
+            access["enter · exec · logs"]
+            link_cmds["link · unlink · linked · links<br/>app-links · promote"]
+            expose_cmds["expose · unexpose"]
+        end
+
+        subgraph hooks["lifecycle hooks (вызывает Dokku)"]
+            pre_start["pre-start<br/>(поднимает linked сервисы<br/>при старте app)"]
+            pre_delete["pre-delete<br/>(unlink при удалении app)"]
+            clone["post-app-clone-setup"]
+            rename["post-app-rename-setup"]
+        end
+
+        subgraph helpers["common helpers"]
+            common["common-functions<br/>──────<br/>service_create · service_link<br/>service_port_expose · env_*<br/>mount_to_docker_args"]
+            functions["functions<br/>──────<br/>build_image_args<br/>verify_service_name<br/>generate_alias"]
+            help["help-functions<br/>──────<br/>текст help по каждой<br/>подкоманде"]
+            cfg["config<br/>──────<br/>PLUGIN_AMBASSADOR_IMAGE,<br/>PLUGIN_DATA_ROOT, ..."]
+        end
+
+        install_script["install / update<br/>──────<br/>idempotent setup:<br/>создаёт data root,<br/>пуллит ambassador image"]
+    end
+
+    docker_engine["🔧 Docker Engine<br/>(внешний)"]
+    state_dir["📁 /var/lib/dokku/<br/>services/generic/<br/>(внешнее хранилище)"]
+
+    cmds --> lifecycle
+    cmds --> config_cmds
+    cmds --> access
+    cmds --> link_cmds
+    cmds --> expose_cmds
+
+    lifecycle --> common
+    config_cmds --> common
+    access --> common
+    link_cmds --> common
+    expose_cmds --> common
+    hooks --> common
+
+    common --> functions
+    common --> cfg
+    cmds --> help
+
+    common --> docker_engine
+    common --> state_dir
+    install_script --> state_dir
+    install_script --> docker_engine
+
+    classDef entry fill:#ffe0b2,stroke:#e65100,color:#000
+    classDef sub fill:#bbdefb,stroke:#0d47a1,color:#000
+    classDef hook fill:#f8bbd0,stroke:#880e4f,color:#000
+    classDef helper fill:#c8e6c9,stroke:#1b5e20,color:#000
+    classDef external fill:#eee,stroke:#616161,color:#000
+    class cmds,install_script entry
+    class lifecycle,config_cmds,access,link_cmds,expose_cmds sub
+    class pre_start,pre_delete,clone,rename hook
+    class common,functions,help,cfg helper
+    class docker_engine,state_dir external
+```
+
+### 7.4 Sequence — `generic:link <svc> <app>`
+
+Что именно происходит при линковке (типичный happy path).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Op as Operator
+    participant CLI as dokku CLI
+    participant Plugin as subcommands/link
+    participant Common as common-functions
+    participant Dokku as Dokku core
+    participant Docker as Docker Engine
+
+    Op->>CLI: dokku generic:link pg myapp
+    CLI->>Plugin: dispatch
+    Plugin->>Common: service_link(pg, myapp)
+    Common->>Common: verify_service_name(pg)
+    Common->>Common: проверить app существует
+    Common->>Common: проверить, не уже линкован?
+    Common->>Common: вычислить PREFIX = "PG" (или PG2 если занят)
+    Common->>Common: add_to_links_file(pg, myapp)
+    Common->>Dokku: docker-options:add myapp build,deploy,run<br/>"--network=dokku-generic-pg"
+    Common->>Common: собрать ENV: PG_HOST, PG_PORT, PG_URL,<br/>+ всё из LINK_ENV/
+    Common->>Dokku: config:set myapp PG_HOST=... PG_PORT=... PG_URL=...
+    Dokku->>Docker: docker stop/start myapp container<br/>(теперь с --network)
+    Docker-->>Common: ok
+    Common-->>Plugin: ok
+    Plugin-->>CLI: success
+    CLI-->>Op: "Service pg linked to myapp"
+```
+
+## 8. Out of scope
 
 Ниже перечислены вещи, **не входящие** в первую версию плагина. Если потребуется — добавятся отдельным циклом spec→plan.
 
@@ -472,7 +654,7 @@ sudo dokku plugin:install https://github.com/<owner>/dokku-generic.git generic
 - Auto-pull при старте сервиса — нагрузим только при `set --image`.
 - Поддержка docker swarm / kubernetes — Dokku сам только Docker.
 
-## 8. Implementation notes
+## 9. Implementation notes
 
 - **bats helpers:** `tests/test_helper.bash` копируется 1:1 из dokku-redis с заменой `PLUGIN_COMMAND_PREFIX=redis` → `generic`. Ассерты `assert_contains`, `assert_success`, `assert_failure` уже generic.
 - **Конфликт alias при `link`:** если у app в config уже есть `<PREFIX>_URL` (от другого link с тем же именем сервиса), генерируется суффикс `2`, `3`, ... — итоговые переменные `<PREFIX>2_HOST/PORT/URL`. Алгоритм: в цикле инкремент пока в `dokku config:get <app>` есть совпадение. То же поведение, что и в `dokku-redis` (`service_alternative_alias` функция).
@@ -480,7 +662,7 @@ sudo dokku plugin:install https://github.com/<owner>/dokku-generic.git generic
 - **Ambassador при добавлении expose:** `docker stop + docker rm + docker run` с новым набором `-p`. Состояния у ambassador нет, рестарт безопасен.
 - **`promote`:** меняет primary alias для app с двумя одинаковыми линками — переписывает в config app переменную с примарным префиксом без суффикса. Реализация — копия `service_promote` из dokku-redis с заменой URL-формирования на нашу схему (`<scheme>://<dns>:<port>`).
 
-## Приложение A. Эквиваленты из dokku-redis
+## 10. Приложение — эквиваленты из dokku-redis
 
 | dokku-redis | dokku-generic | Комментарий |
 |---|---|---|
