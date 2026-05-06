@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-DOKKU_TAG="${DOKKU_TAG:-v0.34.8}"
+DOKKU_TAG="${DOKKU_TAG:-0.37.10}"
 CONTAINER_NAME="dokku-generic-test"
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
