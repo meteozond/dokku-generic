@@ -334,3 +334,18 @@ setup() {
   assert_failure
   assert_contains "$stderr" "fail message"
 }
+
+@test "service_container_name returns dokku-generic-<svc>" {
+  run service_container_name "myservice"
+  assert_output "dokku-generic-myservice"
+}
+
+@test "service_network_name returns dokku-generic-<svc>" {
+  run service_network_name "myservice"
+  assert_output "dokku-generic-myservice"
+}
+
+@test "service_default_volume_name returns dokku.generic.<svc>" {
+  run service_default_volume_name "myservice"
+  assert_output "dokku.generic.myservice"
+}

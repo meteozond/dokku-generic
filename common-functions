@@ -142,6 +142,18 @@ fn-services-list() {
   done
 }
 
+service_container_name() {
+  printf '%s-%s' "$PLUGIN_CONTAINER_PREFIX" "$1"
+}
+
+service_network_name() {
+  printf '%s-%s' "$PLUGIN_NETWORK_PREFIX" "$1"
+}
+
+service_default_volume_name() {
+  printf '%s.%s' "$PLUGIN_VOLUME_PREFIX" "$1"
+}
+
 # When Dokku core is available, prefer its loggers; otherwise fallback.
 if ! declare -f dokku_log_info1 >/dev/null 2>&1; then
   dokku_log_info1() { echo " !  $*"; }
