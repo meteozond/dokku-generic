@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+APP="$1"
+[[ -z "$APP" ]] && exit 0
+
+while IFS= read -r service; do
+  [[ -z "$service" ]] && continue
+  links_file="$(service_root "$service")/LINKS"
+  [[ -s "$links_file" ]] || continue
+  if ! grep -qxF "$APP" "$links_file"; then continue; fi
+
+  if service_is_running "$service"; then continue; fi
+
+  status=$("$DOCKER_BIN" container inspect -f '{{.State.Status}}' "$(service_container_name "$service")" 2>/dev/null || echo "")
+  if [[ "$status" == "restarting" ]]; then
+    dokku_log_warn "$PLUGIN_SERVICE service $service is restarting"
+    continue
+  fi
+  dokku_log_warn "$PLUGIN_SERVICE service $service is not running, starting"
+  "$PLUGIN_BASE_PATH/subcommands/start" "generic:start" "$service"
+done < <(fn-services-list)
