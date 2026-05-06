@@ -56,3 +56,11 @@ generic:config <service>
 Print service configuration: env vars, link-env vars, mounts, exposed ports, port, scheme.
 EOF
 }
+
+cmd_set_help() { cat <<EOF
+generic:set <service> <flags>
+
+Update service configuration. Same flags as create (except --no-start).
+Restarts container automatically if running.
+EOF
+}
