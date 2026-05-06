@@ -357,9 +357,9 @@ setup() {
   mkdir -p "$tmp/myservice"
   echo "redis:7" > "$tmp/myservice/IMAGE"
   env_set "$tmp/myservice/ENV" "FOO" "bar"
-  run build_run_args "myservice"
-  assert_success
-  assert_contains "$output" "-e FOO=bar"
+  build_run_args "myservice"
+  local joined="${_DOCKER_RUN_ARGS[*]}"
+  assert_contains "$joined" "-e FOO=bar"
   rm -rf "$tmp"
 }
 
@@ -369,10 +369,10 @@ setup() {
   PLUGIN_DATA_ROOT="$tmp"
   mkdir -p "$tmp/myservice"
   echo "redis:7" > "$tmp/myservice/IMAGE"
-  run build_run_args "myservice"
-  assert_success
+  build_run_args "myservice"
+  local joined="${_DOCKER_RUN_ARGS[*]}"
   # No mounts file → no -v expected; volume is created on demand at first --mount
-  assert_not_contains "$output" "-v "
+  [[ ! "$joined" =~ "-v " ]] || flunk "expected no -v but got: $joined"
   rm -rf "$tmp"
 }
 
@@ -387,15 +387,15 @@ setup() {
 /host/path:/container/path:ro
 myvol:/var/log
 EOF
-  run build_run_args "myservice"
-  assert_success
+  build_run_args "myservice"
+  local joined="${_DOCKER_RUN_ARGS[*]}"
   # plain path → named auto volume
-  assert_contains "$output" "-v dokku.generic.myservice."
-  assert_contains "$output" ":/var/lib/data"
+  assert_contains "$joined" "-v dokku.generic.myservice."
+  assert_contains "$joined" ":/var/lib/data"
   # bind mount with ro
-  assert_contains "$output" "-v /host/path:/container/path:ro"
+  assert_contains "$joined" "-v /host/path:/container/path:ro"
   # named with explicit name
-  assert_contains "$output" "-v myvol:/var/log"
+  assert_contains "$joined" "-v myvol:/var/log"
   rm -rf "$tmp"
 }
 
@@ -406,9 +406,9 @@ EOF
   mkdir -p "$tmp/myservice"
   echo "redis:7" > "$tmp/myservice/IMAGE"
   echo "/bin/myinit" > "$tmp/myservice/ENTRYPOINT"
-  run build_run_args "myservice"
-  assert_success
-  assert_contains "$output" "--entrypoint /bin/myinit"
+  build_run_args "myservice"
+  local joined="${_DOCKER_RUN_ARGS[*]}"
+  assert_contains "$joined" "--entrypoint /bin/myinit"
   rm -rf "$tmp"
 }
 
@@ -422,10 +422,10 @@ EOF
 --user=1000:1000
 --cap-add=NET_ADMIN
 EOF
-  run build_run_args "myservice"
-  assert_success
-  assert_contains "$output" "--user=1000:1000"
-  assert_contains "$output" "--cap-add=NET_ADMIN"
+  build_run_args "myservice"
+  local joined="${_DOCKER_RUN_ARGS[*]}"
+  assert_contains "$joined" "--user=1000:1000"
+  assert_contains "$joined" "--cap-add=NET_ADMIN"
   rm -rf "$tmp"
 }
 
@@ -435,9 +435,9 @@ EOF
   PLUGIN_DATA_ROOT="$tmp"
   mkdir -p "$tmp/myservice"
   echo "server /data --bind 0.0.0.0" > "$tmp/myservice/CMD"
-  run build_cmd_args "myservice"
-  assert_success
-  assert_output "server /data --bind 0.0.0.0"
+  build_cmd_args "myservice"
+  local joined="${_DOCKER_CMD_ARGS[*]}"
+  assert_equal "$joined" "server /data --bind 0.0.0.0"
   rm -rf "$tmp"
 }
 
@@ -446,8 +446,21 @@ EOF
   tmp=$(mktemp -d)
   PLUGIN_DATA_ROOT="$tmp"
   mkdir -p "$tmp/myservice"
-  run build_cmd_args "myservice"
-  assert_success
-  assert_output ""
+  build_cmd_args "myservice"
+  [[ ${#_DOCKER_CMD_ARGS[@]} -eq 0 ]] || flunk "expected empty array, got: ${_DOCKER_CMD_ARGS[*]}"
+  rm -rf "$tmp"
+}
+
+@test "build_run_args preserves whitespace in --docker-arg values" {
+  local tmp
+  tmp=$(mktemp -d)
+  PLUGIN_DATA_ROOT="$tmp"
+  mkdir -p "$tmp/myservice"
+  echo "redis:7" > "$tmp/myservice/IMAGE"
+  printf '%s\n' '--label=team=hello world' '--cap-add=NET_ADMIN' > "$tmp/myservice/DOCKER_ARGS"
+  build_run_args "myservice"
+  # The first DOCKER_ARG should be exactly one element with the space preserved
+  [[ "${_DOCKER_RUN_ARGS[0]}" == "--label=team=hello world" ]] || flunk "expected single arg with space, got: ${_DOCKER_RUN_ARGS[0]}"
+  [[ "${_DOCKER_RUN_ARGS[1]}" == "--cap-add=NET_ADMIN" ]] || flunk "expected second arg, got: ${_DOCKER_RUN_ARGS[1]}"
   rm -rf "$tmp"
 }

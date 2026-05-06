@@ -1,16 +1,29 @@
 #!/usr/bin/env bash
 # functions: plugin-specific helpers.
 
-# Returns space-separated string of docker run options (excluding image and CMD).
-# Caller is responsible for putting together the final docker run command.
+# Global arrays populated by build_run_args / build_cmd_args.
+# Pre-declared at source time so callers on bash 3 can still expand them.
+_DOCKER_RUN_ARGS=()
+_DOCKER_CMD_ARGS=()
+
+# Populates global array _DOCKER_RUN_ARGS with docker run options (env/mount/entrypoint/docker-args).
+# Caller expands as "${_DOCKER_RUN_ARGS[@]}" — preserves whitespace in values.
 build_run_args() {
   local service="$1"
   local root
   root="$(service_root "$service")"
 
+  _DOCKER_RUN_ARGS=()
+
   # ENV → -e flags
   if [[ -f "$root/ENV" ]]; then
-    env_to_docker_args "$root/ENV"
+    local line key val
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      key="${line%%=*}"
+      val="${line#*=}"
+      _DOCKER_RUN_ARGS+=(-e "$key=$(env_unescape "$val")")
+    done < "$root/ENV"
   fi
 
   # MOUNTS → -v flags
@@ -20,37 +33,41 @@ build_run_args() {
       [[ -z "$line" ]] && continue
       parsed=$(parse_mount_spec "$line") || continue
       IFS='|' read -r type src tgt mode <<< "$parsed"
-      if [[ "$type" == "named" ]]; then
-        if [[ -z "$src" ]]; then
-          src="$(mount_volume_name "$service" "$tgt")"
-        fi
-        printf -- '-v %s:%s:%s ' "$src" "$tgt" "$mode"
-      else
-        printf -- '-v %s:%s:%s ' "$src" "$tgt" "$mode"
+      if [[ "$type" == "named" && -z "$src" ]]; then
+        src="$(mount_volume_name "$service" "$tgt")"
       fi
+      _DOCKER_RUN_ARGS+=(-v "${src}:${tgt}:${mode}")
     done < "$root/MOUNTS"
   fi
 
   # ENTRYPOINT
   if [[ -s "$root/ENTRYPOINT" ]]; then
-    printf -- '--entrypoint %s ' "$(<"$root/ENTRYPOINT")"
+    _DOCKER_RUN_ARGS+=(--entrypoint "$(<"$root/ENTRYPOINT")")
   fi
 
-  # DOCKER_ARGS
+  # DOCKER_ARGS — each line is one arg (preserves whitespace within a line)
   if [[ -f "$root/DOCKER_ARGS" ]]; then
     local arg
     while IFS= read -r arg; do
       [[ -z "$arg" ]] && continue
-      printf '%s ' "$arg"
+      _DOCKER_RUN_ARGS+=("$arg")
     done < "$root/DOCKER_ARGS"
   fi
 }
 
+# Populates global array _DOCKER_CMD_ARGS with CMD-override tokens.
+# Tokenization matches /bin/sh -c semantics (split on whitespace).
 build_cmd_args() {
   local service="$1"
   local root
   root="$(service_root "$service")"
+
+  _DOCKER_CMD_ARGS=()
+
   if [[ -s "$root/CMD" ]]; then
-    cat "$root/CMD"
+    local content
+    content=$(<"$root/CMD")
+    # shellcheck disable=SC2206
+    _DOCKER_CMD_ARGS=($content)
   fi
 }

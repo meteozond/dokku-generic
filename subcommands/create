@@ -180,10 +180,9 @@ trap cleanup_on_fail ERR
   || "$DOCKER_BIN" network create "$NETWORK" >/dev/null
 
 # Build & run
-RUN_ARGS=$(build_run_args "$SERVICE")
-CMD_ARGS=$(build_cmd_args "$SERVICE")
+build_run_args "$SERVICE"
+build_cmd_args "$SERVICE"
 
-# shellcheck disable=SC2046,SC2086
 "$DOCKER_BIN" container run -d \
   --name "$CONTAINER" \
   --hostname "$CONTAINER" \
@@ -193,9 +192,9 @@ CMD_ARGS=$(build_cmd_args "$SERVICE")
   --label "dokku.generic.service=$SERVICE" \
   --network "$NETWORK" \
   --network-alias "$SERVICE" \
-  $RUN_ARGS \
+  "${_DOCKER_RUN_ARGS[@]}" \
   "$IMAGE" \
-  $CMD_ARGS >/dev/null
+  "${_DOCKER_CMD_ARGS[@]}" >/dev/null
 
 "$DOCKER_BIN" container inspect -f '{{.Id}}' "$CONTAINER" > "$ROOT/ID"
 trap - ERR
