@@ -89,12 +89,12 @@ parse_mount_spec() {
   [[ -z "$spec" ]] && return 1
 
   local mode="rw"
-  if [[ "$spec" == *:ro ]]; then
+  if [[ "$spec" == *:[Rr][Oo] ]]; then
     mode="ro"
-    spec="${spec%:ro}"
-  elif [[ "$spec" == *:rw ]]; then
+    spec="${spec%:[Rr][Oo]}"
+  elif [[ "$spec" == *:[Rr][Ww] ]]; then
     mode="rw"
-    spec="${spec%:rw}"
+    spec="${spec%:[Rr][Ww]}"
   fi
 
   if [[ "$spec" != *:* ]]; then

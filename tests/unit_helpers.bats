@@ -262,3 +262,15 @@ setup() {
   n2=$(mount_volume_name "myservice" "/etc/conf")
   [[ "$n1" != "$n2" ]] || flunk "expected different, both got $n1"
 }
+
+@test "parse_mount_spec accepts uppercase :RO suffix" {
+  run parse_mount_spec "/host:/container:RO"
+  assert_success
+  assert_output "bind|/host|/container|ro"
+}
+
+@test "parse_mount_spec accepts uppercase :RW suffix" {
+  run parse_mount_spec "myvol:/container:RW"
+  assert_success
+  assert_output "named|myvol|/container|rw"
+}
