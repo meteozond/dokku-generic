@@ -14,3 +14,15 @@ verify_service_name() {
   fi
   return 0
 }
+
+env_escape() {
+  local v="$1"
+  v="${v//\\/\\\\}"
+  v="${v//$'\n'/\\n}"
+  v="${v//$'\r'/\\r}"
+  printf '%s' "$v"
+}
+
+env_unescape() {
+  printf '%b' "$1"
+}
