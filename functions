@@ -213,3 +213,20 @@ service_ambassador_rebuild() {
       "$container_dns" "$cont_port" >/dev/null
   done <"$root/EXPOSED_PORTS"
 }
+
+# Copy contents of one named volume to another using a busybox helper container.
+copy_volume_data() {
+  local from_vol="$1" to_vol="$2"
+  "$DOCKER_BIN" volume create "$to_vol" >/dev/null
+  "$DOCKER_BIN" container run --rm \
+    -v "$from_vol":/from:ro \
+    -v "$to_vol":/to \
+    "$PLUGIN_BUSYBOX_IMAGE" \
+    sh -c 'cd /from && cp -a . /to/' >/dev/null
+}
+
+# Returns named volumes that belong to a service (default + per-mount sha1).
+list_service_volumes() {
+  local service="$1"
+  "$DOCKER_BIN" volume ls --format '{{.Name}}' | grep -E "^${PLUGIN_VOLUME_PREFIX//./\\.}\.${service}(\.|$)" || true
+}

@@ -515,3 +515,11 @@ EOF
   run service_ambassador_name "myservice"
   assert_output "dokku-generic-myservice.ambassador"
 }
+
+@test "list_service_volumes returns nothing when no volumes for service" {
+  # This test is fine on host since it just runs docker volume ls + grep;
+  # if no volumes match the pattern, output is empty
+  run list_service_volumes "nonexistent-svc-name-xyz123"
+  assert_success
+  assert_output ""
+}
