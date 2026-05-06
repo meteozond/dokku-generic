@@ -58,6 +58,16 @@
 
 - [ ] **`subcommands/promote` имеет dead code** (lines 60, 100): `ROOT_PREFIX` присваивается через `${OUR_PREFIX%%[0-9]*}` и сразу перезаписывается через sed; `service_alternative_alias` вызывается и результат игнорируется в пользу manual loop. Не баг, но мешает читать. Подчистить когда руки дойдут. Файл: `subcommands/promote`.
 
+## Plan 5 — Expose / Ambassador
+
+- [ ] **`service_ambassador_rebuild` делает full teardown+rebuild при каждом expose.** При 10-м `expose` все 9 существующих ambassador'ов на миг рестартуют. Для типичного use-case (1–3 порта) приемлемо. Surgical "start only new one" имеет смысл только при scale что мы не достигнем. Файл: `functions`.
+
+- [ ] **`EXPOSED_PORTS` файл не отсортирован.** Порты пишутся в порядке вызова. Косметика — но если когда-то будем рендерить в `info`/`config` с какими-то ожиданиями порядка — учесть. Файл: внутренний state.
+
+- [ ] **Ambassador'ы продолжают работать после `generic:stop` сервиса.** Они на `--restart always`, переживут стоп самого сервиса. Внешний клиент получит "connection refused" от ambassador когда сервисный контейнер остановлен (ambassador жив, но target недоступен). Решить как должно быть: (а) ambassador должны останавливаться вместе со stop, (б) оставить как есть с warning'ом в help. Файлы: `subcommands/stop`, спека.
+
+- [ ] **`generic:expose --list <service>` — отсутствует convenience-команда.** Сейчас пользователь должен `cat /var/lib/dokku/services/generic/<svc>/EXPOSED_PORTS` или смотреть в `generic:info` (который уже это печатает). Можно добавить если будет нужно. Низкий приоритет.
+
 ## Кросс-плановые / архитектурные
 
 - [ ] **`tests/test_helper.bash` дублирует переменные из `config`** (PLUGIN_NETWORK_PREFIX, PLUGIN_VOLUME_PREFIX, etc.) вместо source `config`. Дрейф вероятен. Заменить на `source "$PLUGIN_BASE_PATH/config"` и убрать дубликаты. Файл: `tests/test_helper.bash`.
