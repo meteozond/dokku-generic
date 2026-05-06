@@ -77,7 +77,19 @@
 
 - [ ] **Clone делает double-restart при override-флагах.** `service_restart_internal` стартует с cloned state, потом `subcommands/set` делает второй restart с overrides. Можно перенести overrides в state ДО restart_internal — будет один restart. Не критично. Файл: `subcommands/clone`.
 
-- [ ] **`rename` не имеет автоматического rollback при ошибке.** Если `copy_volume_data` упадёт после `mv state` — state уже в новом имени, но volumes ещё с старыми именами. Потребует ручной починки. Spec явно говорит "no automatic rollback" (§3 Plan 6). Документировать в help как known limitation. Файл: `subcommands/rename`.
+- [ ] **`rename` не имеет автоматического rollback при ошибке.** Если `copy_volume_data` упадёт после `mv state` — state уже в новом имени, но volumes ещё с старыми именами. Потребует ручной починки. Spec явно говорит "no automatic rollback" (§3 Plan 6). Документировать в help как known limitation; добавить trap handler выводящий recovery hint при non-zero exit. Файл: `subcommands/rename`.
+
+- [ ] **`rename` всегда стартует контейнер.** Если source-сервис был остановлен, после rename он стартует (потому что `service_restart_internal` всегда стартует). Behaviour change для stopped сервиса. Fix: проверить `docker container inspect $OLD_CONT -f '{{.State.Status}}'` перед stop, и если `exited` — после rename не стартовать. Файл: `subcommands/rename`.
+
+- [ ] **Test coverage gaps в Plan 6:**
+  - `clone --copy-volumes` на сервисе без volumes (passes — silent no-op)
+  - `rename` остановленного сервиса (currently fails the "preserve state" expectation — см. issue выше)
+  - `rename` с `EXPOSED_PORTS` (ambassador rebuild — passes но не проверено явно)
+  - `rename` с несколькими linked apps (passes но не проверено явно)
+  - clone с unknown флагом (passes — fail)
+  Стоит добавить эти тесты в Plan 7 fix-up.
+
+- [ ] **Quote-strip helper consolidation.** `subcommands/rename`, `subcommands/unlink`, `subcommands/promote` все парсят `dokku config:export --format=envfile`. Извлечь в `common-functions`: `strip_envfile_quotes <var>` (one-liner `v="${v#\"}"; v="${v%\"}"`). Заодно фиксит latent quote bug в unlink/promote. Файлы: `common-functions`, `subcommands/{rename,unlink,promote}`.
 
 ## Кросс-плановые / архитектурные
 
