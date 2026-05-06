@@ -106,3 +106,10 @@ generic:pause <service>
 Toggle pause/unpause on a running or paused container. Useful for debugging.
 EOF
 }
+
+cmd_enter_help() { cat <<EOF
+generic:enter <service>
+
+Drop into interactive shell inside the running container. Tries bash, falls back to sh.
+EOF
+}
