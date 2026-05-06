@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+shift
+SERVICE="${1:-}"
+
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a valid name for the service"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+
+ROOT="$(service_root "$SERVICE")"
+
+echo "=====> $SERVICE generic service configuration"
+
+# Port & scheme
+[[ -s "$ROOT/PORT"   ]] && printf '       Port:    %s\n' "$(<"$ROOT/PORT")"
+[[ -s "$ROOT/SCHEME" ]] && printf '       Scheme:  %s\n' "$(<"$ROOT/SCHEME")"
+
+# ENV
+echo "       Env:"
+if [[ -s "$ROOT/ENV" ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    echo "         $line"
+  done < "$ROOT/ENV"
+else
+  echo "         (none)"
+fi
+
+# LINK_ENV
+echo "       Link env:"
+if [[ -s "$ROOT/LINK_ENV" ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    echo "         $line"
+  done < "$ROOT/LINK_ENV"
+else
+  echo "         (none)"
+fi
+
+# Mounts
+echo "       Mounts:"
+if [[ -s "$ROOT/MOUNTS" ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    echo "         $line"
+  done < "$ROOT/MOUNTS"
+else
+  echo "         (none)"
+fi
+
+# Exposed ports
+echo "       Exposed ports:"
+if [[ -s "$ROOT/EXPOSED_PORTS" ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    echo "         $line"
+  done < "$ROOT/EXPOSED_PORTS"
+else
+  echo "         (none)"
+fi
