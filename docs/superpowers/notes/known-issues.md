@@ -68,6 +68,17 @@
 
 - [ ] **`generic:expose --list <service>` — отсутствует convenience-команда.** Сейчас пользователь должен `cat /var/lib/dokku/services/generic/<svc>/EXPOSED_PORTS` или смотреть в `generic:info` (который уже это печатает). Можно добавить если будет нужно. Низкий приоритет.
 
+## Plan 6 — Clone / Rename
+
+- [ ] **Latent quote-stripping bug в `unlink`/`promote` parsing.** `dokku config:export --format=envfile` wraps values в **double-quotes** (`KEY="value"`), но `subcommands/unlink` и `subcommands/promote` ожидают single-quotes (`v="${v#\'}"`). В rename это починено (`v="${v#\"}"`), а в unlink/promote — не критично:
+  - `unlink`: ищет matches `*"$DNS"*` в value — DNS-string присутствует и внутри quote'ов, так что match работает.
+  - `promote`: возможны утечки quote'ов в final value, но текущие тесты проходят. Проверить вручную: `dokku config:get app PG_URL` после `promote` — есть ли там лишние `"`?
+  Файлы: `subcommands/unlink:30-37`, `subcommands/promote:23-29`. Поправить для consistency.
+
+- [ ] **Clone делает double-restart при override-флагах.** `service_restart_internal` стартует с cloned state, потом `subcommands/set` делает второй restart с overrides. Можно перенести overrides в state ДО restart_internal — будет один restart. Не критично. Файл: `subcommands/clone`.
+
+- [ ] **`rename` не имеет автоматического rollback при ошибке.** Если `copy_volume_data` упадёт после `mv state` — state уже в новом имени, но volumes ещё с старыми именами. Потребует ручной починки. Spec явно говорит "no automatic rollback" (§3 Plan 6). Документировать в help как known limitation. Файл: `subcommands/rename`.
+
 ## Кросс-плановые / архитектурные
 
 - [ ] **`tests/test_helper.bash` дублирует переменные из `config`** (PLUGIN_NETWORK_PREFIX, PLUGIN_VOLUME_PREFIX, etc.) вместо source `config`. Дрейф вероятен. Заменить на `source "$PLUGIN_BASE_PATH/config"` и убрать дубликаты. Файл: `tests/test_helper.bash`.
