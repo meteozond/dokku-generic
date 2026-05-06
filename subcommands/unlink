@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+shift
+SERVICE="${1:-}"
+APP="${2:-}"
+
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a valid service name"
+[[ -z "$APP" ]] && dokku_log_fail "Please specify a valid app name"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+
+ROOT="$(service_root "$SERVICE")"
+NETWORK="$(service_network_name "$SERVICE")"
+LINKS_FILE="$ROOT/LINKS"
+
+if ! grep -qxF "$APP" "$LINKS_FILE" 2>/dev/null; then
+  dokku_log_fail "Service $SERVICE is not linked to $APP"
+fi
+
+# Remove --network option from docker-options
+dokku docker-options:remove "$APP" build,deploy,run "--network=$NETWORK" 2>/dev/null || true
+
+# Remove config keys whose values reference the service container DNS name.
+# Strategy: list all config keys, check each value, unset if matches.
+DNS="$(service_container_name "$SERVICE")"
+
+# Use dokku config:export envfile format for stable parsing
+declare -a TO_UNSET=()
+while IFS='=' read -r key val; do
+  [[ -z "$key" ]] && continue
+  # Strip leading "export " if present
+  key="${key#export }"
+  # Strip surrounding quotes from value
+  val="${val#\'}"
+  val="${val%\'}"
+  if [[ "$val" == *"$DNS"* ]]; then
+    TO_UNSET+=("$key")
+  fi
+done < <(dokku config:export --format=envfile "$APP" 2>/dev/null || true)
+
+# Also pick up LINK_ENV keys (their values may not contain DNS but they were set by link)
+if [[ -f "$ROOT/LINK_ENV" ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    key="${line%%=*}"
+    # Add only if not already in TO_UNSET
+    found=0
+    for k in "${TO_UNSET[@]}"; do
+      [[ "$k" == "$key" ]] && {
+        found=1
+        break
+      }
+    done
+    [[ $found -eq 0 ]] && TO_UNSET+=("$key")
+  done <"$ROOT/LINK_ENV"
+fi
+
+if [[ ${#TO_UNSET[@]} -gt 0 ]]; then
+  dokku config:unset "$APP" "${TO_UNSET[@]}" >/dev/null 2>&1 || true
+fi
+
+# Remove app from LINKS file (atomic)
+tmp="$(mktemp "$ROOT/.links.XXXXXX")"
+grep -vxF "$APP" "$LINKS_FILE" >"$tmp" || true
+mv "$tmp" "$LINKS_FILE"
+
+dokku_log_info2 "$PLUGIN_SERVICE service $SERVICE unlinked from $APP"

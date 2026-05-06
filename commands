@@ -31,11 +31,12 @@ $(cmd_enter_help | head -3)
 $(cmd_exec_help | head -3)
 $(cmd_logs_help | head -3)
 $(cmd_link_help | head -3)
+$(cmd_unlink_help | head -3)
 
 For full help on a command: dokku generic:<command> --help (TBD in Plan 8)
 EOF
     ;;
-  generic:create | generic:destroy | generic:exists | generic:list | generic:info | generic:config | generic:set | generic:unset | generic:upgrade | generic:start | generic:stop | generic:restart | generic:pause | generic:enter | generic:exec | generic:logs | generic:link)
+  generic:create | generic:destroy | generic:exists | generic:list | generic:info | generic:config | generic:set | generic:unset | generic:upgrade | generic:start | generic:stop | generic:restart | generic:pause | generic:enter | generic:exec | generic:logs | generic:link | generic:unlink)
     SUBCOMMAND="${1#generic:}"
     if [[ -x "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" ]]; then
       "$PLUGIN_BASE_PATH/subcommands/$SUBCOMMAND" "$@"

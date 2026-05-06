@@ -151,3 +151,12 @@ Link service to app: adds --network to docker-options and sets <PREFIX>_HOST/POR
 plus LINK_ENV vars in app config. App restarts via dokku config:set.
 EOF
 }
+
+cmd_unlink_help() {
+  cat <<EOF
+generic:unlink <service> <app>
+
+Disconnect service from app: removes --network from docker-options and unsets
+all related config keys (those referencing the service DNS name + LINK_ENV vars).
+EOF
+}
