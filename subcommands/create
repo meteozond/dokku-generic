@@ -7,9 +7,76 @@ source "$PLUGIN_BASE_PATH/config"
 source "$PLUGIN_BASE_PATH/common-functions"
 source "$PLUGIN_BASE_PATH/functions"
 
-# args: $1=generic:create $2=<service> $3=<image>
-SERVICE="${2:-}"
-IMAGE="${3:-}"
+# Skip the "generic:create" prefix
+shift
+
+SERVICE=""
+IMAGE=""
+NO_START=0
+PORT=""
+SCHEME=""
+CMD_OVERRIDE=""
+ENTRYPOINT_OVERRIDE=""
+ENV_PAIRS=()
+LINK_ENV_PAIRS=()
+MOUNTS=()
+DOCKER_ARGS=()
+EXPOSED_PORTS=()
+
+while [[ $# -gt 0 ]]; do
+  arg="$1"
+  case "$arg" in
+    --no-start)
+      NO_START=1; shift ;;
+    --port)
+      PORT="$2"; shift 2 ;;
+    --port=*)
+      PORT="${arg#--port=}"; shift ;;
+    --scheme)
+      SCHEME="$2"; shift 2 ;;
+    --scheme=*)
+      SCHEME="${arg#--scheme=}"; shift ;;
+    --env)
+      ENV_PAIRS+=("$2"); shift 2 ;;
+    --env=*)
+      ENV_PAIRS+=("${arg#--env=}"); shift ;;
+    --link-env)
+      LINK_ENV_PAIRS+=("$2"); shift 2 ;;
+    --link-env=*)
+      LINK_ENV_PAIRS+=("${arg#--link-env=}"); shift ;;
+    --mount)
+      MOUNTS+=("$2"); shift 2 ;;
+    --mount=*)
+      MOUNTS+=("${arg#--mount=}"); shift ;;
+    --cmd)
+      CMD_OVERRIDE="$2"; shift 2 ;;
+    --cmd=*)
+      CMD_OVERRIDE="${arg#--cmd=}"; shift ;;
+    --entrypoint)
+      ENTRYPOINT_OVERRIDE="$2"; shift 2 ;;
+    --entrypoint=*)
+      ENTRYPOINT_OVERRIDE="${arg#--entrypoint=}"; shift ;;
+    --docker-arg)
+      DOCKER_ARGS+=("$2"); shift 2 ;;
+    --docker-arg=*)
+      DOCKER_ARGS+=("${arg#--docker-arg=}"); shift ;;
+    --expose)
+      EXPOSED_PORTS+=("$2"); shift 2 ;;
+    --expose=*)
+      EXPOSED_PORTS+=("${arg#--expose=}"); shift ;;
+    -*)
+      dokku_log_fail "Unknown flag: $arg" ;;
+    *)
+      if [[ -z "$SERVICE" ]]; then
+        SERVICE="$arg"
+      elif [[ -z "$IMAGE" ]]; then
+        IMAGE="$arg"
+      else
+        dokku_log_fail "Unexpected positional argument: $arg"
+      fi
+      shift ;;
+  esac
+done
 
 if [[ -z "$SERVICE" ]]; then
   dokku_log_fail "Please specify a valid name for the service"
@@ -28,7 +95,7 @@ ROOT="$(service_root "$SERVICE")"
 CONTAINER="$(service_container_name "$SERVICE")"
 NETWORK="$(service_network_name "$SERVICE")"
 
-# Pull image if missing locally
+# Pull image
 if ! "$DOCKER_BIN" image inspect "$IMAGE" >/dev/null 2>&1; then
   dokku_log_info1 "Pulling image $IMAGE"
   "$DOCKER_BIN" image pull "$IMAGE"
@@ -37,8 +104,69 @@ fi
 # Initialize state
 mkdir -p "$ROOT"
 echo "$IMAGE" > "$ROOT/IMAGE"
-echo "tcp" > "$ROOT/SCHEME"
+[[ -n "$PORT" ]] && echo "$PORT" > "$ROOT/PORT"
+echo "${SCHEME:-tcp}" > "$ROOT/SCHEME"
+[[ -n "$CMD_OVERRIDE" ]] && printf '%s' "$CMD_OVERRIDE" > "$ROOT/CMD"
+[[ -n "$ENTRYPOINT_OVERRIDE" ]] && printf '%s' "$ENTRYPOINT_OVERRIDE" > "$ROOT/ENTRYPOINT"
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$ROOT/CREATED_AT"
+
+# Validate and write env
+for pair in "${ENV_PAIRS[@]}"; do
+  if [[ "$pair" != *=* ]]; then
+    rm -rf "$ROOT"
+    dokku_log_fail "Invalid --env, expected KEY=VALUE: $pair"
+  fi
+  key="${pair%%=*}"
+  val="${pair#*=}"
+  if [[ ! "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]]; then
+    rm -rf "$ROOT"
+    dokku_log_fail "Invalid --env key: $key (must match ^[A-Z_][A-Z0-9_]*$)"
+  fi
+  env_set "$ROOT/ENV" "$key" "$val"
+done
+
+for pair in "${LINK_ENV_PAIRS[@]}"; do
+  if [[ "$pair" != *=* ]]; then
+    rm -rf "$ROOT"
+    dokku_log_fail "Invalid --link-env, expected KEY=VALUE: $pair"
+  fi
+  key="${pair%%=*}"
+  val="${pair#*=}"
+  if [[ ! "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]]; then
+    rm -rf "$ROOT"
+    dokku_log_fail "Invalid --link-env key: $key"
+  fi
+  env_set "$ROOT/LINK_ENV" "$key" "$val"
+done
+
+# Validate mounts and write
+for spec in "${MOUNTS[@]}"; do
+  if ! parse_mount_spec "$spec" >/dev/null; then
+    rm -rf "$ROOT"
+    dokku_log_fail "Invalid --mount spec: $spec"
+  fi
+  echo "$spec" >> "$ROOT/MOUNTS"
+done
+
+# Docker args
+for da in "${DOCKER_ARGS[@]}"; do
+  echo "$da" >> "$ROOT/DOCKER_ARGS"
+done
+
+# Exposed ports — record only; activation happens in expose subcommand (Plan 5)
+for ep in "${EXPOSED_PORTS[@]}"; do
+  if [[ ! "$ep" =~ ^[0-9]+:[0-9]+$ ]]; then
+    rm -rf "$ROOT"
+    dokku_log_fail "Invalid --expose: expected HOST:CONTAINER, got $ep"
+  fi
+  echo "$ep" >> "$ROOT/EXPOSED_PORTS"
+done
+
+# Stop here if --no-start
+if [[ $NO_START -eq 1 ]]; then
+  dokku_log_info2 "container created (not started): $SERVICE"
+  exit 0
+fi
 
 cleanup_on_fail() {
   "$DOCKER_BIN" container rm -f "$CONTAINER" >/dev/null 2>&1 || true
@@ -51,8 +179,11 @@ trap cleanup_on_fail ERR
 "$DOCKER_BIN" network inspect "$NETWORK" >/dev/null 2>&1 \
   || "$DOCKER_BIN" network create "$NETWORK" >/dev/null
 
-# Run container
-# shellcheck disable=SC2046
+# Build & run
+RUN_ARGS=$(build_run_args "$SERVICE")
+CMD_ARGS=$(build_cmd_args "$SERVICE")
+
+# shellcheck disable=SC2046,SC2086
 "$DOCKER_BIN" container run -d \
   --name "$CONTAINER" \
   --hostname "$CONTAINER" \
@@ -62,9 +193,9 @@ trap cleanup_on_fail ERR
   --label "dokku.generic.service=$SERVICE" \
   --network "$NETWORK" \
   --network-alias "$SERVICE" \
-  $(build_run_args "$SERVICE") \
+  $RUN_ARGS \
   "$IMAGE" \
-  $(build_cmd_args "$SERVICE") >/dev/null
+  $CMD_ARGS >/dev/null
 
 "$DOCKER_BIN" container inspect -f '{{.Id}}' "$CONTAINER" > "$ROOT/ID"
 trap - ERR
