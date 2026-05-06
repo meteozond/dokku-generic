@@ -510,3 +510,8 @@ EOF
   assert_output ""
   rm -rf "$tmp"
 }
+
+@test "service_ambassador_name returns <container>.ambassador" {
+  run service_ambassador_name "myservice"
+  assert_output "dokku-generic-myservice.ambassador"
+}

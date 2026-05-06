@@ -167,3 +167,49 @@ service_alternative_alias() {
     [[ $i -gt 99 ]] && return 1
   done
 }
+
+service_ambassador_name() {
+  printf '%s.ambassador' "$(service_container_name "$1")"
+}
+
+# Rebuild per-port ambassador containers from EXPOSED_PORTS state.
+# Tears down any previous ambassador containers for this service first,
+# then runs one ambassador container per exposed port.
+# Idempotent: safe to call multiple times.
+service_ambassador_rebuild() {
+  local service="$1"
+  local network root
+  network="$(service_network_name "$service")"
+  root="$(service_root "$service")"
+
+  # Tear down all existing per-port ambassador containers for this service
+  local amb
+  while IFS= read -r amb; do
+    [[ -z "$amb" ]] && continue
+    "$DOCKER_BIN" container rm -f "$amb" >/dev/null 2>&1 || true
+  done < <("$DOCKER_BIN" container ls -aq --filter "label=dokku.ambassador.service=$service" --format '{{.Names}}' 2>/dev/null)
+
+  # If no EXPOSED_PORTS, we're done
+  [[ ! -s "$root/EXPOSED_PORTS" ]] && return 0
+
+  local container_dns base_amb
+  container_dns="$(service_container_name "$service")"
+  base_amb="$(service_ambassador_name "$service")"
+
+  local line host_port cont_port
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    host_port="${line%%:*}"
+    cont_port="${line#*:}"
+    "$DOCKER_BIN" container run -d \
+      --name "${base_amb}.${host_port}" \
+      --network "$network" \
+      --restart always \
+      --label dokku=ambassador \
+      --label "dokku.ambassador=$PLUGIN_SERVICE" \
+      --label "dokku.ambassador.service=$service" \
+      -p "$line" \
+      "$PLUGIN_AMBASSADOR_IMAGE" \
+      "$container_dns" "$cont_port" >/dev/null
+  done <"$root/EXPOSED_PORTS"
+}
