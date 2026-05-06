@@ -142,3 +142,12 @@ generic:logs <service> [-t] [-n N] [-f]
 Show container logs. Flags: -t (timestamps), -n N (last N lines), -f (follow).
 EOF
 }
+
+cmd_link_help() {
+  cat <<EOF
+generic:link <service> <app> [--alias PREFIX]
+
+Link service to app: adds --network to docker-options and sets <PREFIX>_HOST/PORT/URL
+plus LINK_ENV vars in app config. App restarts via dokku config:set.
+EOF
+}

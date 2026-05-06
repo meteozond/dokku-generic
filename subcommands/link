@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+shift
+SERVICE=""
+APP=""
+ALIAS_OVERRIDE=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --alias)
+      ALIAS_OVERRIDE="$2"
+      shift 2
+      ;;
+    --alias=*)
+      ALIAS_OVERRIDE="${1#--alias=}"
+      shift
+      ;;
+    -*)
+      dokku_log_fail "Unknown flag: $1"
+      ;;
+    *)
+      if [[ -z "$SERVICE" ]]; then
+        SERVICE="$1"
+      elif [[ -z "$APP" ]]; then
+        APP="$1"
+      else
+        dokku_log_fail "Unexpected: $1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a valid service name"
+[[ -z "$APP" ]] && dokku_log_fail "Please specify a valid app name"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+
+if ! dokku apps:exists "$APP" >/dev/null 2>&1; then
+  dokku_log_fail "App $APP does not exist (try: dokku apps:create $APP)"
+fi
+
+ROOT="$(service_root "$SERVICE")"
+NETWORK="$(service_network_name "$SERVICE")"
+LINKS_FILE="$ROOT/LINKS"
+
+# Already linked?
+if grep -qxF "$APP" "$LINKS_FILE" 2>/dev/null; then
+  dokku_log_fail "Already linked: $APP"
+fi
+
+# Determine alias
+if [[ -n "$ALIAS_OVERRIDE" ]]; then
+  ALIAS="$(service_alternative_alias "$APP" "$ALIAS_OVERRIDE")"
+else
+  ALIAS="$(service_alternative_alias "$APP" "$(service_alias "$SERVICE")")"
+fi
+
+# Add app to LINKS file
+echo "$APP" >>"$LINKS_FILE"
+
+# Add network to docker-options
+dokku docker-options:add "$APP" build,deploy,run "--network=$NETWORK"
+
+# Build and apply env
+declare -a CONFIG_ARGS=()
+CONFIG_ARGS+=("${ALIAS}_HOST=$(service_container_name "$SERVICE")")
+
+if [[ -s "$ROOT/PORT" ]]; then
+  PORT=$(<"$ROOT/PORT")
+  CONFIG_ARGS+=("${ALIAS}_PORT=$PORT")
+  URL=$(service_url "$SERVICE")
+  CONFIG_ARGS+=("${ALIAS}_URL=$URL")
+fi
+
+# Append link-env vars
+if [[ -f "$ROOT/LINK_ENV" ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    CONFIG_ARGS+=("$key=$(env_unescape "$val")")
+  done <"$ROOT/LINK_ENV"
+fi
+
+dokku config:set "$APP" "${CONFIG_ARGS[@]}"
+
+dokku_log_info2 "$PLUGIN_SERVICE service $SERVICE linked to $APP"
