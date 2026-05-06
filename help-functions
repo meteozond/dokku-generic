@@ -202,3 +202,11 @@ Open service port on host via ambassador container. Does not restart service.
 Idempotent — safe to call multiple times for the same spec.
 EOF
 }
+
+cmd_unexpose_help() {
+  cat <<EOF
+generic:unexpose <service> <host_port>:<container_port>
+
+Remove a port mapping for service. Tears down its per-port ambassador.
+EOF
+}

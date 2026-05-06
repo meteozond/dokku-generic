@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+source "$PLUGIN_BASE_PATH/functions"
+
+shift
+SERVICE="${1:-}"
+SPEC="${2:-}"
+
+[[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a service"
+[[ -z "$SPEC" ]] && dokku_log_fail "Please specify HOST_PORT:CONTAINER_PORT"
+verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
+service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+
+ROOT="$(service_root "$SERVICE")"
+
+if [[ ! -f "$ROOT/EXPOSED_PORTS" ]] || ! grep -qxF "$SPEC" "$ROOT/EXPOSED_PORTS"; then
+  dokku_log_fail "Port $SPEC is not exposed for $SERVICE"
+fi
+
+# Remove from EXPOSED_PORTS atomically
+tmp="$(mktemp "$ROOT/.expose.XXXXXX")"
+grep -vxF "$SPEC" "$ROOT/EXPOSED_PORTS" >"$tmp" || true
+mv "$tmp" "$ROOT/EXPOSED_PORTS"
+
+service_ambassador_rebuild "$SERVICE"
+
+dokku_log_info2 "Unexposed $SPEC for $SERVICE"
