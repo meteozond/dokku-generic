@@ -274,3 +274,43 @@ setup() {
   assert_success
   assert_output "named|myvol|/container|rw"
 }
+
+@test "service_root returns full path under PLUGIN_DATA_ROOT" {
+  run service_root "myservice"
+  assert_success
+  assert_output "$PLUGIN_DATA_ROOT/myservice"
+}
+
+@test "service_exists returns 1 when no state dir" {
+  PLUGIN_DATA_ROOT="$(mktemp -d)"
+  run service_exists "missing"
+  assert_failure
+  rm -rf "$PLUGIN_DATA_ROOT"
+}
+
+@test "service_exists returns 0 when state dir present" {
+  PLUGIN_DATA_ROOT="$(mktemp -d)"
+  mkdir -p "$PLUGIN_DATA_ROOT/exists"
+  run service_exists "exists"
+  assert_success
+  rm -rf "$PLUGIN_DATA_ROOT"
+}
+
+@test "fn-services-list returns nothing when no services" {
+  PLUGIN_DATA_ROOT="$(mktemp -d)"
+  run fn-services-list
+  assert_success
+  assert_output ""
+  rm -rf "$PLUGIN_DATA_ROOT"
+}
+
+@test "fn-services-list returns each service name on its own line" {
+  PLUGIN_DATA_ROOT="$(mktemp -d)"
+  mkdir -p "$PLUGIN_DATA_ROOT/svc1"
+  mkdir -p "$PLUGIN_DATA_ROOT/svc2"
+  run fn-services-list
+  assert_success
+  assert_contains "$output" "svc1"
+  assert_contains "$output" "svc2"
+  rm -rf "$PLUGIN_DATA_ROOT"
+}

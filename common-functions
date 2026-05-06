@@ -123,3 +123,21 @@ mount_volume_name() {
   hash=$(printf '%s' "$container_path" | sha1sum | cut -c1-12)
   printf '%s.%s.%s' "$PLUGIN_VOLUME_PREFIX" "$service" "$hash"
 }
+
+service_root() {
+  printf '%s/%s' "$PLUGIN_DATA_ROOT" "$1"
+}
+
+service_exists() {
+  local service="$1"
+  [[ -d "$(service_root "$service")" ]]
+}
+
+fn-services-list() {
+  [[ -d "$PLUGIN_DATA_ROOT" ]] || return 0
+  local entry
+  for entry in "$PLUGIN_DATA_ROOT"/*; do
+    [[ -d "$entry" ]] || continue
+    basename "$entry"
+  done
+}
