@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+
+PLUGIN_BASE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$PLUGIN_BASE_PATH/config"
+source "$PLUGIN_BASE_PATH/common-functions"
+
+APP="$1"
+[[ -z "$APP" ]] && exit 0
+
+while IFS= read -r service; do
+  [[ -z "$service" ]] && continue
+  links_file="$(service_root "$service")/LINKS"
+  [[ -f "$links_file" ]] || continue
+  if grep -qxF "$APP" "$links_file"; then
+    tmp="$(mktemp "$(dirname "$links_file")/.links.XXXXXX")"
+    grep -vxF "$APP" "$links_file" >"$tmp" || true
+    mv "$tmp" "$links_file"
+    dokku_log_verbose "Removed $APP from $service LINKS"
+  fi
+done < <(fn-services-list)
