@@ -39,7 +39,10 @@ ssh root@dokku-server bash -c '
 If you don't have rsync but want a single command:
 
 ```bash
-# from your local checkout (assuming clean tree without unwanted files):
+# from inside the source directory (cd /path/to/dokku-generic-source):
+scp -r . root@dokku-server:/var/lib/dokku/plugins/available/generic
+
+# OR by passing the source path explicitly:
 scp -r /path/to/dokku-generic-source root@dokku-server:/var/lib/dokku/plugins/available/generic
 
 # on the Dokku host:
@@ -50,7 +53,30 @@ ssh root@dokku-server bash -c '
 '
 ```
 
-`scp -r` copies the whole directory but **has no `--exclude`** — you'll also transfer `.git/`, `tmp/`, IDE files etc. Either clean the tree first or use rsync.
+`scp -r` copies the whole directory but **has no `--exclude`** — you'll also transfer `.git/`, `tmp/`, IDE files, etc. Choose one of:
+
+- **Clean tree first** (delete `.git/`, `tmp/`, `docs/` from a temporary copy).
+- **Use `git archive` for a clean snapshot** (only files tracked by git, no `.git`):
+  ```bash
+  git archive HEAD | ssh root@dokku-server '
+    mkdir -p /var/lib/dokku/plugins/available/generic &&
+    tar -x -C /var/lib/dokku/plugins/available/generic
+  '
+  ```
+- **Use `tar` with `--exclude` and pipe over ssh** (works without git):
+  ```bash
+  tar -cf - \
+      --exclude=tmp --exclude=.git --exclude=docs \
+      --exclude=.github --exclude=.idea --exclude=.claude \
+      . | ssh root@dokku-server '
+    mkdir -p /var/lib/dokku/plugins/available/generic &&
+    tar -xf - -C /var/lib/dokku/plugins/available/generic
+  '
+  ```
+- **Or just prune after `scp -r`:**
+  ```bash
+  ssh root@dokku-server 'rm -rf /var/lib/dokku/plugins/available/generic/{.git,tmp,docs,.github,.idea,.claude}'
+  ```
 
 ## Option 4 — tarball (compressed, single file)
 
