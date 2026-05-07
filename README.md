@@ -1,24 +1,26 @@
 # dokku-generic
 
-Universal Docker image service plugin for [Dokku](https://dokku.com).
-Run **any Docker image** as a service: env vars, volumes, port exposure, app linking, shell access — all through a familiar `dokku-redis`-style CLI.
+Universal [Dokku](https://dokku.com) plugin for any Docker image.
 
+Run any Docker image as a Dokku-managed service — env vars, volumes, port exposure, app linking, shell access — through a familiar `dokku-redis`-style CLI.
+
+- [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Examples](#examples)
   - [Atlassian MCP](#atlassian-mcp)
   - [Filesystem MCP](#filesystem-mcp)
   - [Postgres MCP](#postgres-mcp)
+- [Commands](#commands)
 - [Command reference](#command-reference)
+- [Environment overrides](#environment-overrides)
 - [Differences from dokku-redis](#differences-from-dokku-redis)
 - [Development](#development)
 
-## Status
+## Requirements
 
-In development. All 19 subcommands + 4 lifecycle hooks implemented and tested. Tagged-release workflow not yet wired (no `v0.1.0` published yet).
-
-Spec: [`docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md).
-Implementation plans: [`docs/superpowers/plans/`](docs/superpowers/plans/).
+- Dokku ≥ v0.34
+- Docker
 
 ## Installation
 
@@ -26,7 +28,7 @@ Implementation plans: [`docs/superpowers/plans/`](docs/superpowers/plans/).
 sudo dokku plugin:install https://github.com/<owner>/dokku-generic.git generic
 ```
 
-Requires Dokku ≥ v0.34 and Docker.
+For installation **without git** (rsync/scp/tarball/`docker cp`), see [docs/install-without-git.md](docs/install-without-git.md).
 
 ## Quick start
 
@@ -43,7 +45,7 @@ dokku generic:exec cache redis-cli ping
 dokku generic:logs cache
 dokku generic:enter cache
 
-# expose to host
+# expose to host (via per-port ambassador, doesn't restart service)
 dokku generic:expose cache 16379:6379
 
 # clean up
@@ -100,6 +102,38 @@ dokku generic:create pg-mcp mcp/postgres:latest \
   --docker-arg "--network=dokku-postgres-mydb"
 
 dokku generic:link pg-mcp myapp
+```
+
+## Commands
+
+```
+generic:app-links <app>                                    # alias of generic:links
+generic:clone <source> <new> [--copy-volumes] [flags...]   # copy state to a new service
+generic:config <service>                                   # print env, link-env, mounts, exposed ports, port, scheme
+generic:create <service> <image[:tag]> [flags...]          # create a new service from a Docker image
+generic:destroy <service> [-f|--force]                     # delete service: container, ambassadors, network, volumes, state
+generic:enter <service>                                    # interactive shell (bash with sh fallback)
+generic:exec <service> [-i] [-t] <cmd> [args...]           # run command inside container, exit code propagates
+generic:exists <service>                                   # exit 0 if service exists, 1 otherwise
+generic:expose <service> <host:container>                  # open port on host via per-port ambassador (no service restart)
+generic:help                                               # plugin overview
+generic:info <service> [--<flag>]                          # service info; flags: --image|--status|--port|--internal-ip|--links|--exposed-ports
+generic:link <service> <app> [--alias PREFIX]              # link service to app; injects <PREFIX>_HOST/PORT/URL + LINK_ENV
+generic:linked <service>                                   # list apps linked to a service
+generic:links <app>                                        # list services linked to an app
+generic:list                                               # list all services with image and status
+generic:logs <service> [-t] [-n N] [-f]                    # show container logs
+generic:pause <service>                                    # toggle pause/unpause
+generic:promote <service> <app>                            # swap with primary alias when multiple services share prefix
+generic:rename <old> <new>                                 # rename service: state, volumes, network, linked-app config
+generic:restart <service>                                  # recreate container with current state
+generic:set <service> <flags...>                           # update config (same flags as create); auto-restarts if running
+generic:start <service>                                    # start stopped service; idempotent; recreates from state if no container
+generic:stop <service>                                     # stop running service
+generic:unexpose <service> <host:container>                # remove port mapping; tears down its ambassador
+generic:unlink <service> <app>                             # disconnect service from app
+generic:unset <service> --<flag> KEY                       # remove env/link-env/mount/docker-arg/expose; auto-restarts if running
+generic:upgrade <service> <new-image[:tag]>                # alias of set --image
 ```
 
 ## Command reference
@@ -193,7 +227,40 @@ generic:app-links <app>                           # alias of links
 generic:promote <service> <app>                   # swap with primary alias
 ```
 
-When linking, the prefix defaults to the service name uppercased with `-`/`.` → `_` (e.g., `my-pg` → `MY_PG`). If that prefix is already in use on the app, the next available slot (`MY_PG2`, `MY_PG3`...) is taken.
+#### What variables show up in the linked app
+
+After `dokku generic:link <service> <app>`, the app's config (visible via `dokku config:show <app>`) gains:
+
+| Variable | Always set? | Value |
+|---|---|---|
+| `<PREFIX>_HOST` | yes | DNS name of service container, e.g. `dokku-generic-<svc>` |
+| `<PREFIX>_PORT` | only if service has `--port` | port number |
+| `<PREFIX>_URL` | only if service has `--port` | `<scheme>://<PREFIX>_HOST:<PREFIX>_PORT` (scheme from `--scheme`, default `tcp`) |
+| every `--link-env KEY=VAL` | yes | as-is (overrides above on key collision) |
+
+`<PREFIX>` is the service name uppercased, with `-` and `.` replaced by `_` (e.g., `my-pg` → `MY_PG`). Custom prefix via `--alias`. On collision (existing `<PREFIX>_URL`), the next free slot is taken (`MY_PG2`, `MY_PG3`...).
+
+Example:
+```bash
+dokku generic:create cache redis:7-alpine \
+  --port 6379 --scheme redis \
+  --link-env CACHE_PASSWORD=secret
+dokku generic:link cache myapp
+
+# now in myapp:
+dokku config:show myapp
+# CACHE_HOST=dokku-generic-cache
+# CACHE_PORT=6379
+# CACHE_URL=redis://dokku-generic-cache:6379
+# CACHE_PASSWORD=secret
+```
+
+In the app, your code reads these env vars to connect:
+```python
+redis.from_url(os.environ["CACHE_URL"], password=os.environ["CACHE_PASSWORD"])
+```
+
+The app container is also placed on the service's Docker network (via `dokku docker-options:add ... --network=dokku-generic-<svc>`), so the DNS name actually resolves at runtime.
 
 ### Exposing ports
 
@@ -214,6 +281,28 @@ Each exposed port runs its own ambassador container (`dokku/ambassador:0.8.2` by
 | `post-app-rename-setup` | `dokku apps:rename <old> <new>` | Updates `LINKS` files in-place |
 
 `service-list` is also exposed for `dokku ls` integration.
+
+## Environment overrides
+
+Plugin behavior tunable via environment variables (override before invoking dokku):
+
+| Variable | Default | Effect |
+|---|---|---|
+| `PLUGIN_AMBASSADOR_IMAGE` | `dokku/ambassador:0.8.2` | Image used for `expose` ambassadors. Override for airgapped installs. |
+| `PLUGIN_BUSYBOX_IMAGE` | `busybox:1.36` | Image used by `clone --copy-volumes` and `rename` for volume data copy. |
+| `PLUGIN_STOP_TIMEOUT` | `10` | Graceful stop timeout in seconds for `stop`/`restart`. |
+| `DOCKER_BIN` | `docker` | Docker CLI binary path (override for podman, custom builds, etc). |
+| `DOKKU_TRACE` | unset | If set to any value, every command in plugin scripts is printed before execution (`set -x`). Useful for debugging hooks. |
+
+Apply for one command:
+```bash
+DOKKU_TRACE=1 dokku generic:create pg postgres:15
+```
+
+Apply persistently for the dokku user (e.g. on Dokku host):
+```bash
+echo 'export PLUGIN_AMBASSADOR_IMAGE=registry.internal/ambassador:1.0' >> /home/dokku/.bashrc
+```
 
 ## Differences from dokku-redis
 
@@ -252,6 +341,13 @@ docker exec -it dokku-generic-test bash               # enter the container
 ```
 
 The plugin source is mounted read-only at `/plugin-source` and copied to `/var/lib/dokku/plugins/available/generic` at startup.
+
+## Status
+
+In development. All 19 subcommands + 4 lifecycle hooks implemented and tested. Tagged-release workflow not yet wired (no `v0.1.0` published yet).
+
+Spec: [`docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md).
+Implementation plans: [`docs/superpowers/plans/`](docs/superpowers/plans/).
 
 ## Known issues / backlog
 
