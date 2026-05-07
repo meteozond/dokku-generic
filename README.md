@@ -247,7 +247,7 @@ After `dokku generic:link <service> <app>`, the app's config (visible via `dokku
 | `<PREFIX>_HOST` | yes | DNS name of service container, e.g. `dokku-generic-<svc>` |
 | `<PREFIX>_PORT` | only if service has `--port` | port number |
 | `<PREFIX>_URL` | only if service has `--port` | `<scheme>://<PREFIX>_HOST:<PREFIX>_PORT` (scheme from `--scheme`, default `tcp`) |
-| every `--link-env KEY=VAL` | yes | as-is (overrides above on key collision) |
+| every `--link-env KEY=VAL` | yes | as-is, with `%h`/`%p`/`%s` placeholders expanded (overrides above on key collision) |
 
 `<PREFIX>` is the service name uppercased, with `-` and `.` replaced by `_` (e.g., `my-pg` → `MY_PG`). Custom prefix via `--alias`. On collision (existing `<PREFIX>_URL`), the next free slot is taken (`MY_PG2`, `MY_PG3`...).
 
@@ -265,6 +265,31 @@ dokku config:show myapp
 # CACHE_URL=redis://dokku-generic-cache:6379
 # CACHE_PASSWORD=secret
 ```
+
+#### Placeholders in `--link-env` values
+
+To compose custom URLs without hardcoding the service DNS name, use these placeholders in `--link-env` values — they're interpolated at link time:
+
+| Placeholder | Replaced with |
+|---|---|
+| `%h` | service DNS name (`dokku-generic-<svc>`) |
+| `%p` | port (from `--port`; empty if not set) |
+| `%s` | scheme (from `--scheme`, default `tcp`) |
+
+Example:
+
+```bash
+dokku generic:create pg postgres:15 --port 5432 --scheme postgres \
+  --env POSTGRES_USER=app --env POSTGRES_PASSWORD=secret --env POSTGRES_DB=mydb \
+  --link-env DATABASE_URL='postgres://app:secret@%h:%p/mydb' \
+  --link-env READONLY_URL='postgres://readonly:ro@%h:%p/mydb'
+
+dokku generic:link pg myapp
+# DATABASE_URL=postgres://app:secret@dokku-generic-pg:5432/mydb
+# READONLY_URL=postgres://readonly:ro@dokku-generic-pg:5432/mydb
+```
+
+The auto-injected `<PREFIX>_URL` is unaffected by placeholders — it's always `<scheme>://<host>:<port>`.
 
 In the app, your code reads these env vars to connect:
 ```python

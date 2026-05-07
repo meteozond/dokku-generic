@@ -72,3 +72,20 @@ teardown() {
   run dokku "$PLUGIN_COMMAND_PREFIX:link" testpg nonexistent
   assert_failure
 }
+
+@test "(generic:link) interpolates %h %p %s in link-env values" {
+  dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpg2 2>/dev/null || true
+  dokku "$PLUGIN_COMMAND_PREFIX:create" testpg2 redis:7-alpine --port 6379 --scheme redis \
+    --link-env DATABASE_URL='redis://%s-user:secret@%h:%p/0' \
+    --link-env CUSTOM_HOST_ONLY='%h'
+  dokku "$PLUGIN_COMMAND_PREFIX:link" testpg2 testapp
+
+  run dokku config:get testapp DATABASE_URL
+  assert_output "redis://redis-user:secret@dokku-generic-testpg2:6379/0"
+
+  run dokku config:get testapp CUSTOM_HOST_ONLY
+  assert_output "dokku-generic-testpg2"
+
+  rm -f "$PLUGIN_DATA_HOST_ROOT/testpg2/LINKS"
+  dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpg2
+}

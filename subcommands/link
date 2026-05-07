@@ -80,13 +80,21 @@ if [[ -s "$ROOT/PORT" ]]; then
   CONFIG_ARGS+=("${ALIAS}_URL=$URL")
 fi
 
-# Append link-env vars
+# Append link-env vars (with %h/%p/%s placeholder interpolation)
 if [[ -f "$ROOT/LINK_ENV" ]]; then
+  DNS_VAL="$(service_container_name "$SERVICE")"
+  PORT_VAL=""
+  [[ -s "$ROOT/PORT" ]] && PORT_VAL=$(<"$ROOT/PORT")
+  SCHEME_VAL="$(cat "$ROOT/SCHEME" 2>/dev/null || echo "tcp")"
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
     key="${line%%=*}"
     val="${line#*=}"
-    CONFIG_ARGS+=("$key=$(env_unescape "$val")")
+    val="$(env_unescape "$val")"
+    val="${val//%h/$DNS_VAL}"
+    val="${val//%p/$PORT_VAL}"
+    val="${val//%s/$SCHEME_VAL}"
+    CONFIG_ARGS+=("$key=$val")
   done <"$ROOT/LINK_ENV"
 fi
 
