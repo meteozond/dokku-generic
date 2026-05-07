@@ -78,12 +78,23 @@ ssh root@dokku-server bash -c '
   ssh root@dokku-server 'rm -rf /var/lib/dokku/plugins/available/generic/{.git,tmp,docs,.github,.idea,.claude}'
   ```
 
-- **Bash extglob to skip specific entries** (zero or one transfer; works in bash, may need `shopt -s extglob`):
+- **Bash extglob to skip specific entries** (works in bash, may need `shopt -s extglob`):
   ```bash
   shopt -s extglob
   scp -r !(.git|tmp|docs|.idea|.claude) root@dokku-server:/var/lib/dokku/plugins/available/generic/
   ```
-  Note: plain `scp -r ./*` also skips dotfiles, but that drops `.actrc`/`.editorconfig`/`.github/` which you usually want — extglob lets you exclude only the noise.
+
+- **Zsh equivalent** (different glob syntax — uses `^` for negation, requires both `extended_glob` and `glob_dots` to also pick up needed dotfiles like `.actrc`):
+  ```zsh
+  setopt extended_glob glob_dots
+  scp -r ^(.git|tmp|docs|.idea|.claude) root@dokku-server:/var/lib/dokku/plugins/available/generic/
+  ```
+  Or as a one-shot without changing shell options:
+  ```zsh
+  zsh -c 'setopt extended_glob glob_dots; scp -r ^(.git|tmp|docs|.idea|.claude) root@dokku-server:/var/lib/dokku/plugins/available/generic/'
+  ```
+
+Note: plain `scp -r ./*` also skips dotfiles, but that drops `.actrc`/`.editorconfig`/`.github/` which you usually want — the extglob/extended_glob forms exclude only the noise.
 
 ## Option 4 — tarball (compressed, single file)
 
