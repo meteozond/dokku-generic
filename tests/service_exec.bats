@@ -22,7 +22,7 @@ teardown() {
 }
 
 @test "(generic:exec) error when not running" {
-  docker container stop dokku-generic-testexec
+  docker container stop dokku.generic.testexec
   run dokku "$PLUGIN_COMMAND_PREFIX:exec" testexec echo hi
   assert_failure
 }

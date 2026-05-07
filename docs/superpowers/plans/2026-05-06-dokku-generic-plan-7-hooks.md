@@ -43,7 +43,7 @@ teardown() {
 @test "(hook pre-start) starts stopped linked services" {
   dokku "$PLUGIN_COMMAND_PREFIX:stop" testpg
   run dokku ps:start testapp 2>&1 || true
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-testpg
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.testpg
   assert_output "running"
 }
 
@@ -201,7 +201,7 @@ teardown() {
   run cat "$PLUGIN_DATA_HOST_ROOT/testpg/LINKS"
   assert_contains "$output" "dstapp"
   run dokku config:get dstapp TESTPG_HOST
-  assert_output "dokku-generic-testpg"
+  assert_output "dokku.generic.testpg"
 }
 ```
 

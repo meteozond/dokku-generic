@@ -20,9 +20,9 @@ teardown() {
   assert_not_contains "$output" "16379:6379"
   assert_contains "$output" "26379:6379"
 
-  run docker container inspect dokku-generic-testexp.ambassador.16379
+  run docker container inspect dokku.generic.testexp.ambassador.16379
   assert_failure
-  run docker container inspect dokku-generic-testexp.ambassador.26379
+  run docker container inspect dokku.generic.testexp.ambassador.26379
   assert_success
 }
 

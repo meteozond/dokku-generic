@@ -335,14 +335,14 @@ setup() {
   assert_contains "$stderr" "fail message"
 }
 
-@test "service_container_name returns dokku-generic-<svc>" {
+@test "service_container_name returns dokku.generic.<svc>" {
   run service_container_name "myservice"
-  assert_output "dokku-generic-myservice"
+  assert_output "dokku.generic.myservice"
 }
 
-@test "service_network_name returns dokku-generic-<svc>" {
+@test "service_network_name returns dokku.generic.<svc>" {
   run service_network_name "myservice"
-  assert_output "dokku-generic-myservice"
+  assert_output "dokku.generic.myservice"
 }
 
 @test "service_default_volume_name returns dokku.generic.<svc>" {
@@ -496,7 +496,7 @@ EOF
   echo "5432" > "$tmp/pg/PORT"
   echo "postgres" > "$tmp/pg/SCHEME"
   run service_url "pg"
-  assert_output "postgres://dokku-generic-pg:5432"
+  assert_output "postgres://dokku.generic.pg:5432"
   rm -rf "$tmp"
 }
 
@@ -513,7 +513,7 @@ EOF
 
 @test "service_ambassador_name returns <container>.ambassador" {
   run service_ambassador_name "myservice"
-  assert_output "dokku-generic-myservice.ambassador"
+  assert_output "dokku.generic.myservice.ambassador"
 }
 
 @test "list_service_volumes returns nothing when no volumes for service" {

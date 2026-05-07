@@ -128,7 +128,7 @@ teardown() {
   assert_success
   run cat "$PLUGIN_DATA_HOST_ROOT/testset/IMAGE"
   assert_output "redis:7"
-  run docker container inspect -f '{{.Config.Image}}' "dokku-generic-testset"
+  run docker container inspect -f '{{.Config.Image}}' "dokku.generic.testset"
   assert_output "redis:7"
 }
 
@@ -187,9 +187,9 @@ teardown() {
 }
 
 @test "(generic:set) restarts container after change" {
-  initial_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testset)
+  initial_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testset)
   dokku "$PLUGIN_COMMAND_PREFIX:set" testset --env NEW=var
-  new_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testset)
+  new_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testset)
   [[ "$initial_id" != "$new_id" ]] || flunk "expected container to be recreated"
 }
 
@@ -378,9 +378,9 @@ teardown() {
 }
 
 @test "(generic:unset) restarts service" {
-  initial_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testunset)
+  initial_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testunset)
   dokku "$PLUGIN_COMMAND_PREFIX:unset" testunset --env FOO
-  new_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testunset)
+  new_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testunset)
   [[ "$initial_id" != "$new_id" ]]
 }
 
@@ -509,7 +509,7 @@ teardown() {
   assert_success
   run cat "$PLUGIN_DATA_HOST_ROOT/testupgrade/IMAGE"
   assert_output "redis:7"
-  run docker container inspect -f '{{.Config.Image}}' "dokku-generic-testupgrade"
+  run docker container inspect -f '{{.Config.Image}}' "dokku.generic.testupgrade"
   assert_output "redis:7"
 }
 

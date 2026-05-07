@@ -28,18 +28,18 @@ teardown() {
 
 @test "isolation: app1 only has svc1's network in docker-options" {
   run dokku docker-options:report app1
-  assert_contains "$output" "--network=dokku-generic-svc1"
-  assert_not_contains "$output" "--network=dokku-generic-svc2"
+  assert_contains "$output" "--network=dokku.generic.svc1"
+  assert_not_contains "$output" "--network=dokku.generic.svc2"
 }
 
 @test "isolation: app2 only has svc2's network in docker-options" {
   run dokku docker-options:report app2
-  assert_contains "$output" "--network=dokku-generic-svc2"
-  assert_not_contains "$output" "--network=dokku-generic-svc1"
+  assert_contains "$output" "--network=dokku.generic.svc2"
+  assert_not_contains "$output" "--network=dokku.generic.svc1"
 }
 
 @test "isolation: svc1 and svc2 networks are different" {
-  net1=$(docker network inspect -f '{{.Id}}' dokku-generic-svc1)
-  net2=$(docker network inspect -f '{{.Id}}' dokku-generic-svc2)
+  net1=$(docker network inspect -f '{{.Id}}' dokku.generic.svc1)
+  net2=$(docker network inspect -f '{{.Id}}' dokku.generic.svc2)
   [[ "$net1" != "$net2" ]]
 }

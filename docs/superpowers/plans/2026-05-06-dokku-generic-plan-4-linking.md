@@ -41,7 +41,7 @@
   echo "5432" > "$tmp/pg/PORT"
   echo "postgres" > "$tmp/pg/SCHEME"
   run service_url "pg"
-  assert_output "postgres://dokku-generic-pg:5432"
+  assert_output "postgres://dokku.generic.pg:5432"
   rm -rf "$tmp"
 }
 
@@ -144,13 +144,13 @@ teardown() {
 
   # docker-options has --network
   run dokku docker-options:report testapp
-  assert_contains "$output" "--network=dokku-generic-testpg"
+  assert_contains "$output" "--network=dokku.generic.testpg"
 
   # config has TESTPG_URL/HOST/PORT
   run dokku config:get testapp TESTPG_URL
-  assert_output "redis://dokku-generic-testpg:6379"
+  assert_output "redis://dokku.generic.testpg:6379"
   run dokku config:get testapp TESTPG_HOST
-  assert_output "dokku-generic-testpg"
+  assert_output "dokku.generic.testpg"
   run dokku config:get testapp TESTPG_PORT
   assert_output "6379"
 
@@ -162,7 +162,7 @@ teardown() {
 @test "(generic:link --alias) uses custom prefix" {
   dokku "$PLUGIN_COMMAND_PREFIX:link" testpg testapp --alias DATABASE
   run dokku config:get testapp DATABASE_URL
-  assert_output "redis://dokku-generic-testpg:6379"
+  assert_output "redis://dokku.generic.testpg:6379"
   run dokku config:get testapp TESTPG_URL
   assert_output ""
 }
@@ -180,7 +180,7 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:link" testpg testapp
   dokku "$PLUGIN_COMMAND_PREFIX:link" testpg2 testapp --alias TESTPG
   run dokku config:get testapp TESTPG2_URL
-  assert_contains "$output" "dokku-generic-testpg2"
+  assert_contains "$output" "dokku.generic.testpg2"
   dokku "$PLUGIN_COMMAND_PREFIX:unlink" testpg2 testapp
   dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpg2
 }
@@ -323,7 +323,7 @@ teardown() {
   assert_not_contains "$output" "testapp"
 
   run dokku docker-options:report testapp
-  assert_not_contains "$output" "--network=dokku-generic-testpg"
+  assert_not_contains "$output" "--network=dokku.generic.testpg"
 
   run dokku config:get testapp TESTPG_URL
   assert_output ""
@@ -585,17 +585,17 @@ teardown() {
 @test "(generic:promote) promotes secondary alias to primary" {
   # initial state: pg → PG_URL, pg2 → PG2_URL
   run dokku config:get testapp PG_URL
-  assert_contains "$output" "dokku-generic-pg:6379"
+  assert_contains "$output" "dokku.generic.pg:6379"
   run dokku config:get testapp PG2_URL
-  assert_contains "$output" "dokku-generic-pg2:6379"
+  assert_contains "$output" "dokku.generic.pg2:6379"
 
   dokku "$PLUGIN_COMMAND_PREFIX:promote" pg2 testapp
 
   # after promote: pg2 → PG_URL, pg → PG2_URL
   run dokku config:get testapp PG_URL
-  assert_contains "$output" "dokku-generic-pg2:6379"
+  assert_contains "$output" "dokku.generic.pg2:6379"
   run dokku config:get testapp PG2_URL
-  assert_contains "$output" "dokku-generic-pg:6379"
+  assert_contains "$output" "dokku.generic.pg:6379"
 }
 ```
 
@@ -642,7 +642,7 @@ PRIMARY_URL=$(dokku config:get --no-restart "$APP" "${BASE_ALIAS}_URL" 2>/dev/nu
 if [[ -n "$PRIMARY_URL" && "$PRIMARY_URL" != *"$DNS"* ]]; then
   # Find the service that currently holds primary
   OTHER_DNS=$(echo "$PRIMARY_URL" | sed -E 's|^[^:]+://([^:/]+).*|\1|')
-  OTHER_SVC="${OTHER_DNS#dokku-generic-}"
+  OTHER_SVC="${OTHER_DNS#dokku.generic.}"
 
   # Compute next alternative
   ALT_ALIAS="$(service_alternative_alias "$APP" "$BASE_ALIAS")"
@@ -728,19 +728,19 @@ teardown() {
 
 @test "isolation: app1 only has svc1's network in docker-options" {
   run dokku docker-options:report app1
-  assert_contains "$output" "--network=dokku-generic-svc1"
-  assert_not_contains "$output" "--network=dokku-generic-svc2"
+  assert_contains "$output" "--network=dokku.generic.svc1"
+  assert_not_contains "$output" "--network=dokku.generic.svc2"
 }
 
 @test "isolation: app2 only has svc2's network in docker-options" {
   run dokku docker-options:report app2
-  assert_contains "$output" "--network=dokku-generic-svc2"
-  assert_not_contains "$output" "--network=dokku-generic-svc1"
+  assert_contains "$output" "--network=dokku.generic.svc2"
+  assert_not_contains "$output" "--network=dokku.generic.svc1"
 }
 
 @test "isolation: svc1 and svc2 networks are different" {
-  net1=$(docker network inspect -f '{{.Id}}' dokku-generic-svc1)
-  net2=$(docker network inspect -f '{{.Id}}' dokku-generic-svc2)
+  net1=$(docker network inspect -f '{{.Id}}' dokku.generic.svc1)
+  net2=$(docker network inspect -f '{{.Id}}' dokku.generic.svc2)
   [[ "$net1" != "$net2" ]]
 }
 ```

@@ -20,7 +20,7 @@
 
 @test "service_ambassador_name returns <container>.ambassador" {
   run service_ambassador_name "myservice"
-  assert_output "dokku-generic-myservice.ambassador"
+  assert_output "dokku.generic.myservice.ambassador"
 }
 ```
 
@@ -121,14 +121,14 @@ teardown() {
   run cat "$PLUGIN_DATA_HOST_ROOT/testexp/EXPOSED_PORTS"
   assert_contains "$output" "16379:6379"
 
-  run docker container inspect dokku-generic-testexp.ambassador.16379
+  run docker container inspect dokku.generic.testexp.ambassador.16379
   assert_success
 }
 
 @test "(generic:expose) does NOT restart service container" {
-  initial_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testexp)
+  initial_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testexp)
   dokku "$PLUGIN_COMMAND_PREFIX:expose" testexp 16379:6379
-  new_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testexp)
+  new_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testexp)
   [[ "$initial_id" == "$new_id" ]]
 }
 
@@ -237,9 +237,9 @@ teardown() {
   assert_not_contains "$output" "16379:6379"
   assert_contains "$output" "26379:6379"
 
-  run docker container inspect dokku-generic-testexp.ambassador.16379
+  run docker container inspect dokku.generic.testexp.ambassador.16379
   assert_failure
-  run docker container inspect dokku-generic-testexp.ambassador.26379
+  run docker container inspect dokku.generic.testexp.ambassador.26379
   assert_success
 }
 

@@ -16,7 +16,7 @@ teardown() {
   assert_success
   run cat "$PLUGIN_DATA_HOST_ROOT/testupgrade/IMAGE"
   assert_output "redis:7"
-  run docker container inspect -f '{{.Config.Image}}' "dokku-generic-testupgrade"
+  run docker container inspect -f '{{.Config.Image}}' "dokku.generic.testupgrade"
   assert_output "redis:7"
 }
 

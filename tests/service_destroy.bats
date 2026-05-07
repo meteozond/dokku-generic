@@ -10,7 +10,7 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testdestroy redis:7-alpine
   run dokku "$PLUGIN_COMMAND_PREFIX:destroy" testdestroy --force
   assert_success
-  run docker container inspect "dokku-generic-testdestroy"
+  run docker container inspect "dokku.generic.testdestroy"
   assert_failure
 }
 
@@ -23,7 +23,7 @@ teardown() {
 @test "(generic:destroy) removes docker network" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testdestroy redis:7-alpine
   dokku "$PLUGIN_COMMAND_PREFIX:destroy" testdestroy --force
-  run docker network inspect "dokku-generic-testdestroy"
+  run docker network inspect "dokku.generic.testdestroy"
   assert_failure
 }
 

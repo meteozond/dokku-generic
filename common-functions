@@ -143,11 +143,11 @@ fn-services-list() {
 }
 
 service_container_name() {
-  printf '%s-%s' "$PLUGIN_CONTAINER_PREFIX" "$1"
+  printf '%s.%s' "$PLUGIN_CONTAINER_PREFIX" "$1"
 }
 
 service_network_name() {
-  printf '%s-%s' "$PLUGIN_NETWORK_PREFIX" "$1"
+  printf '%s.%s' "$PLUGIN_NETWORK_PREFIX" "$1"
 }
 
 service_default_volume_name() {

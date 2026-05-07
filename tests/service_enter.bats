@@ -17,7 +17,7 @@ teardown() {
 }
 
 @test "(generic:enter) error when not running" {
-  docker container stop dokku-generic-testenter
+  docker container stop dokku.generic.testenter
   run dokku "$PLUGIN_COMMAND_PREFIX:enter" testenter
   assert_failure
 }

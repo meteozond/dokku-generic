@@ -10,8 +10,8 @@ teardown() {
   # Direct fallback cleanup
   local _svc
   for _svc in testcreate service-with-dashes; do
-    docker container rm -f "dokku-generic-${_svc}" >/dev/null 2>&1 || true
-    docker network rm "dokku-generic-${_svc}" >/dev/null 2>&1 || true
+    docker container rm -f "dokku.generic.${_svc}" >/dev/null 2>&1 || true
+    docker network rm "dokku.generic.${_svc}" >/dev/null 2>&1 || true
     rm -rf "/var/lib/dokku/services/generic/${_svc}"
   done
 }
@@ -30,13 +30,13 @@ teardown() {
 
 @test "(generic:create) creates docker network" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testcreate redis:7-alpine
-  run docker network inspect "dokku-generic-testcreate"
+  run docker network inspect "dokku.generic.testcreate"
   assert_success
 }
 
 @test "(generic:create) starts running container" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testcreate redis:7-alpine
-  run docker container inspect -f '{{.State.Status}}' "dokku-generic-testcreate"
+  run docker container inspect -f '{{.State.Status}}' "dokku.generic.testcreate"
   assert_output "running"
 }
 
@@ -123,7 +123,7 @@ teardown() {
 
 @test "(generic:create --no-start) creates state but no container" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testcreate redis:7-alpine --no-start
-  run docker container inspect "dokku-generic-testcreate"
+  run docker container inspect "dokku.generic.testcreate"
   assert_failure
   run cat "$PLUGIN_DATA_HOST_ROOT/testcreate/IMAGE"
   assert_output "redis:7-alpine"
@@ -143,6 +143,6 @@ teardown() {
 
 @test "(generic:create) container has env from --env" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testcreate redis:7-alpine --env REDIS_PASSWORD=sekret --cmd "redis-server --requirepass sekret"
-  run docker exec dokku-generic-testcreate env
+  run docker exec dokku.generic.testcreate env
   assert_contains "$output" "REDIS_PASSWORD=sekret"
 }

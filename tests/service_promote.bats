@@ -26,15 +26,15 @@ teardown() {
 @test "(generic:promote) promotes secondary alias to primary" {
   # initial state: pg → PG_URL, pg2 → PG2_URL
   run dokku config:get testapp PG_URL
-  assert_contains "$output" "dokku-generic-pg:6379"
+  assert_contains "$output" "dokku.generic.pg:6379"
   run dokku config:get testapp PG2_URL
-  assert_contains "$output" "dokku-generic-pg2:6379"
+  assert_contains "$output" "dokku.generic.pg2:6379"
 
   dokku "$PLUGIN_COMMAND_PREFIX:promote" pg2 testapp
 
   # after promote: pg2 → PG_URL, pg → PG2_URL
   run dokku config:get testapp PG_URL
-  assert_contains "$output" "dokku-generic-pg2:6379"
+  assert_contains "$output" "dokku.generic.pg2:6379"
   run dokku config:get testapp PG2_URL
-  assert_contains "$output" "dokku-generic-pg:6379"
+  assert_contains "$output" "dokku.generic.pg:6379"
 }

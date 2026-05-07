@@ -7,14 +7,14 @@ setup() {
 }
 
 teardown() {
-  docker container unpause dokku-generic-testpause 2>/dev/null || true
+  docker container unpause dokku.generic.testpause 2>/dev/null || true
   dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpause 2>/dev/null || true
 }
 
 @test "(generic:pause) pauses running container" {
   run dokku "$PLUGIN_COMMAND_PREFIX:pause" testpause
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-testpause
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.testpause
   assert_output "paused"
 }
 
@@ -22,6 +22,6 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:pause" testpause
   run dokku "$PLUGIN_COMMAND_PREFIX:pause" testpause
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-testpause
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.testpause
   assert_output "running"
 }

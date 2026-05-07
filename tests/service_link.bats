@@ -30,13 +30,13 @@ teardown() {
 
   # docker-options has --network
   run dokku docker-options:report testapp
-  assert_contains "$output" "--network=dokku-generic-testpg"
+  assert_contains "$output" "--network=dokku.generic.testpg"
 
   # config has TESTPG_URL/HOST/PORT
   run dokku config:get testapp TESTPG_URL
-  assert_output "redis://dokku-generic-testpg:6379"
+  assert_output "redis://dokku.generic.testpg:6379"
   run dokku config:get testapp TESTPG_HOST
-  assert_output "dokku-generic-testpg"
+  assert_output "dokku.generic.testpg"
   run dokku config:get testapp TESTPG_PORT
   assert_output "6379"
 
@@ -48,7 +48,7 @@ teardown() {
 @test "(generic:link --alias) uses custom prefix" {
   dokku "$PLUGIN_COMMAND_PREFIX:link" testpg testapp --alias DATABASE
   run dokku config:get testapp DATABASE_URL
-  assert_output "redis://dokku-generic-testpg:6379"
+  assert_output "redis://dokku.generic.testpg:6379"
   run dokku config:get testapp TESTPG_URL
   assert_output ""
 }
@@ -65,7 +65,7 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:link" testpg testapp
   dokku "$PLUGIN_COMMAND_PREFIX:link" testpg2 testapp --alias TESTPG
   run dokku config:get testapp TESTPG2_URL
-  assert_contains "$output" "dokku-generic-testpg2"
+  assert_contains "$output" "dokku.generic.testpg2"
 }
 
 @test "(generic:link) error when app missing" {
@@ -81,10 +81,10 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:link" testpg2 testapp
 
   run dokku config:get testapp DATABASE_URL
-  assert_output "redis://redis-user:secret@dokku-generic-testpg2:6379/0"
+  assert_output "redis://redis-user:secret@dokku.generic.testpg2:6379/0"
 
   run dokku config:get testapp CUSTOM_HOST_ONLY
-  assert_output "dokku-generic-testpg2"
+  assert_output "dokku.generic.testpg2"
 
   rm -f "$PLUGIN_DATA_HOST_ROOT/testpg2/LINKS"
   dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpg2
@@ -98,10 +98,10 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:link" testpg2 testapp
 
   run dokku config:get testapp LITERAL
-  assert_output "%h is dokku-generic-testpg2"
+  assert_output "%h is dokku.generic.testpg2"
 
   run dokku config:get testapp DOUBLE_PERCENT
-  assert_output "100% sure: dokku-generic-testpg2:6379"
+  assert_output "100% sure: dokku.generic.testpg2:6379"
 
   rm -f "$PLUGIN_DATA_HOST_ROOT/testpg2/LINKS"
   dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpg2

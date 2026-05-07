@@ -72,9 +72,9 @@ dokku generic:create atlassian-mcp ghcr.io/sooperset/mcp-atlassian:latest \
 
 dokku generic:link atlassian-mcp myapp
 # myapp gets in its config:
-#   ATLASSIAN_MCP_HOST=dokku-generic-atlassian-mcp
+#   ATLASSIAN_MCP_HOST=dokku.generic.atlassian-mcp
 #   ATLASSIAN_MCP_PORT=9000
-#   ATLASSIAN_MCP_URL=http://dokku-generic-atlassian-mcp:9000
+#   ATLASSIAN_MCP_URL=http://dokku.generic.atlassian-mcp:9000
 ```
 
 ### Filesystem MCP
@@ -90,9 +90,9 @@ dokku generic:create fs-mcp mcp/filesystem:latest \
 
 dokku generic:link fs-mcp myapp
 # myapp gets in its config:
-#   FS_MCP_HOST=dokku-generic-fs-mcp
+#   FS_MCP_HOST=dokku.generic.fs-mcp
 #   FS_MCP_PORT=9001
-#   FS_MCP_URL=http://dokku-generic-fs-mcp:9001
+#   FS_MCP_URL=http://dokku.generic.fs-mcp:9001
 ```
 
 ### Postgres MCP
@@ -110,9 +110,9 @@ dokku generic:create pg-mcp mcp/postgres:latest \
 
 dokku generic:link pg-mcp myapp
 # myapp gets in its config:
-#   PG_MCP_HOST=dokku-generic-pg-mcp
+#   PG_MCP_HOST=dokku.generic.pg-mcp
 #   PG_MCP_PORT=9002
-#   PG_MCP_URL=http://dokku-generic-pg-mcp:9002
+#   PG_MCP_URL=http://dokku.generic.pg-mcp:9002
 ```
 
 ## Commands
@@ -244,7 +244,7 @@ After `dokku generic:link <service> <app>`, the app's config (visible via `dokku
 
 | Variable | Always set? | Value |
 |---|---|---|
-| `<PREFIX>_HOST` | yes | DNS name of service container, e.g. `dokku-generic-<svc>` |
+| `<PREFIX>_HOST` | yes | DNS name of service container, e.g. `dokku.generic.<svc>` |
 | `<PREFIX>_PORT` | only if service has `--port` | port number |
 | `<PREFIX>_URL` | only if service has `--port` | `<scheme>://<PREFIX>_HOST:<PREFIX>_PORT` (scheme from `--scheme`, default `tcp`) |
 | every `--link-env KEY=VAL` | yes | as-is, with `%h`/`%p`/`%s` placeholders expanded (overrides above on key collision) |
@@ -260,9 +260,9 @@ dokku generic:link cache myapp
 
 # now in myapp:
 dokku config:show myapp
-# CACHE_HOST=dokku-generic-cache
+# CACHE_HOST=dokku.generic.cache
 # CACHE_PORT=6379
-# CACHE_URL=redis://dokku-generic-cache:6379
+# CACHE_URL=redis://dokku.generic.cache:6379
 # CACHE_PASSWORD=secret
 ```
 
@@ -272,7 +272,7 @@ To compose custom URLs without hardcoding the service DNS name, use these placeh
 
 | Placeholder | Replaced with |
 |---|---|
-| `%h` | service DNS name (`dokku-generic-<svc>`) |
+| `%h` | service DNS name (`dokku.generic.<svc>`) |
 | `%p` | port (from `--port`; empty if not set — patterns like `%h:%p` produce a trailing colon when service has no port) |
 | `%s` | scheme (from `--scheme`, default `tcp`) |
 
@@ -285,8 +285,8 @@ dokku generic:create pg postgres:15 --port 5432 --scheme postgres \
   --link-env READONLY_URL='postgres://readonly:ro@%h:%p/mydb'
 
 dokku generic:link pg myapp
-# DATABASE_URL=postgres://app:secret@dokku-generic-pg:5432/mydb
-# READONLY_URL=postgres://readonly:ro@dokku-generic-pg:5432/mydb
+# DATABASE_URL=postgres://app:secret@dokku.generic.pg:5432/mydb
+# READONLY_URL=postgres://readonly:ro@dokku.generic.pg:5432/mydb
 ```
 
 The auto-injected `<PREFIX>_URL` is unaffected by placeholders — it's always `<scheme>://<host>:<port>`.
@@ -296,7 +296,7 @@ In the app, your code reads these env vars to connect:
 redis.from_url(os.environ["CACHE_URL"], password=os.environ["CACHE_PASSWORD"])
 ```
 
-The app container is also placed on the service's Docker network (via `dokku docker-options:add ... --network=dokku-generic-<svc>`), so the DNS name actually resolves at runtime.
+The app container is also placed on the service's Docker network (via `dokku docker-options:add ... --network=dokku.generic.<svc>`), so the DNS name actually resolves at runtime.
 
 ### Exposing ports
 
@@ -348,8 +348,8 @@ echo 'export PLUGIN_AMBASSADOR_IMAGE=registry.internal/ambassador:1.0' >> /home/
 | `connect` | Runs `redis-cli` inside container | Use `exec <service> <command>` instead |
 | `link` URL | `REDIS_URL=redis://...` (fixed) | `<PREFIX>_HOST/PORT/URL` (auto-prefix from service name) + custom `LINK_ENV` |
 | Backup/import/export | Yes (Redis dump) | No (out of scope; use `docker run --rm -v <vol>:/data busybox tar -czf - /data > backup.tar.gz`) |
-| Network model | Single `dokku.network` for all redises | Per-service network `dokku-generic-<svc>` (better isolation) |
-| Linking mechanism | Legacy `--link` | `--network=dokku-generic-<svc>` via `docker-options` |
+| Network model | Single `dokku.network` for all redises | Per-service network `dokku.generic.<svc>` (better isolation) |
+| Linking mechanism | Legacy `--link` | `--network=dokku.generic.<svc>` via `docker-options` |
 | Exposing | One ambassador for all ports | One ambassador **per port** (independent lifecycle) |
 | Whitespace in args | N/A | `--docker-arg`/`--cmd` preserve whitespace via bash arrays |
 
@@ -372,7 +372,7 @@ The CI matrix runs against Dokku `0.37.10` by default; extendable via `.github/w
 To bring up a Dokku container manually for ad-hoc poking:
 ```bash
 ./tests/setup-dokku.sh                                # boots dokku/dokku:0.37.10
-docker exec -it dokku-generic-test bash               # enter the container
+docker exec -it dokku.generic.test bash               # enter the container
 ./tests/teardown-dokku.sh                             # stop & remove when done
 ```
 
@@ -382,7 +382,7 @@ The plugin source is mounted read-only at `/plugin-source` and copied to `/var/l
 
 In development. All 19 subcommands + 4 lifecycle hooks implemented and tested. Tagged-release workflow not yet wired (no `v0.1.0` published yet).
 
-Spec: [`docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md).
+Spec: [`docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md).
 Implementation plans: [`docs/superpowers/plans/`](docs/superpowers/plans/).
 
 ## Known issues / backlog

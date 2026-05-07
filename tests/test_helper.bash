@@ -4,8 +4,8 @@ export PLUGIN_COMMAND_PREFIX="generic"
 export PLUGIN_SERVICE="generic"
 export PLUGIN_DATA_HOST_ROOT="/var/lib/dokku/services/generic"
 export PLUGIN_BASE_PATH="${PLUGIN_BASE_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-export PLUGIN_NETWORK_PREFIX="dokku-generic"
-export PLUGIN_CONTAINER_PREFIX="dokku-generic"
+export PLUGIN_NETWORK_PREFIX="dokku.generic"
+export PLUGIN_CONTAINER_PREFIX="dokku.generic"
 export PLUGIN_VOLUME_PREFIX="dokku.generic"
 
 flunk() {

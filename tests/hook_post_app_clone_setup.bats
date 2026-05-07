@@ -24,5 +24,5 @@ teardown() {
   run cat "$PLUGIN_DATA_HOST_ROOT/testpg/LINKS"
   assert_contains "$output" "dstapp"
   run dokku config:get dstapp TESTPG_HOST
-  assert_output "dokku-generic-testpg"
+  assert_output "dokku.generic.testpg"
 }

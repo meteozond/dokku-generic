@@ -11,10 +11,10 @@ teardown() {
 
 @test "(generic:start) starts a stopped service" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" teststart redis:7-alpine
-  docker container stop dokku-generic-teststart
+  docker container stop dokku.generic.teststart
   run dokku "$PLUGIN_COMMAND_PREFIX:start" teststart
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-teststart
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.teststart
   assert_output "running"
 }
 
@@ -29,7 +29,7 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:create" teststart redis:7-alpine --no-start
   run dokku "$PLUGIN_COMMAND_PREFIX:start" teststart
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-teststart
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.teststart
   assert_output "running"
 }
 

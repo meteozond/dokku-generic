@@ -4,12 +4,12 @@
 
 **Goal:** Реализовать каркас плагина dokku-generic с возможностью создать/удалить/посмотреть универсальный Docker-сервис. После завершения этого плана `dokku generic:create svc image:tag` поднимает контейнер, `generic:info`/`generic:config`/`generic:list`/`generic:exists` показывают его состояние, `generic:destroy` удаляет.
 
-**Architecture:** Плагин Dokku в виде набора bash-скриптов: `commands` диспатчер → `subcommands/<name>` → helper-функции в `common-functions`/`functions`. Состояние сервиса — файлы в `/var/lib/dokku/services/generic/<service>/`. На сервис создаётся отдельная Docker network `dokku-generic-<service>`, контейнер запускается с named volume `dokku.generic.<service>`. Для unit-тестов helper-функции вынесены так, что их можно source'нуть и протестировать через bats без Dokku-окружения; интеграционные bats-тесты гоняются на реальном Dokku в Docker (см. `tests/setup-dokku.sh`).
+**Architecture:** Плагин Dokku в виде набора bash-скриптов: `commands` диспатчер → `subcommands/<name>` → helper-функции в `common-functions`/`functions`. Состояние сервиса — файлы в `/var/lib/dokku/services/generic/<service>/`. На сервис создаётся отдельная Docker network `dokku.generic.<service>`, контейнер запускается с named volume `dokku.generic.<service>`. Для unit-тестов helper-функции вынесены так, что их можно source'нуть и протестировать через bats без Dokku-окружения; интеграционные bats-тесты гоняются на реальном Dokku в Docker (см. `tests/setup-dokku.sh`).
 
 **Tech Stack:** bash 5.x, bats-core, shellcheck, shfmt, Docker, Dokku ≥ v0.34.
 
 **References:**
-- Spec: `docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md`
+- Spec: `docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md`
 - Reference plugin: `tmp/dokku-redis/` (для паттернов helper-функций; код **не копируем целиком** — берём только структуру и переписываем под универсальный образ)
 
 **Out of this plan** (будут в следующих планах):
@@ -149,7 +149,7 @@ Universal Docker image service plugin for [Dokku](https://dokku.com).
 
 MVP. Реализовано: `generic:create / generic:destroy / generic:list / generic:exists / generic:info / generic:config`.
 
-Spec: [`docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md).
+Spec: [`docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md).
 
 ## License
 
@@ -1154,14 +1154,14 @@ git commit -m "feat: dokku_log_* fallback wrappers"
 
 ```bash
 
-@test "service_container_name returns dokku-generic-<svc>" {
+@test "service_container_name returns dokku.generic.<svc>" {
   run service_container_name "myservice"
-  assert_output "dokku-generic-myservice"
+  assert_output "dokku.generic.myservice"
 }
 
-@test "service_network_name returns dokku-generic-<svc>" {
+@test "service_network_name returns dokku.generic.<svc>" {
   run service_network_name "myservice"
-  assert_output "dokku-generic-myservice"
+  assert_output "dokku.generic.myservice"
 }
 
 @test "service_default_volume_name returns dokku.generic.<svc>" {
@@ -1735,13 +1735,13 @@ teardown() {
 
 @test "(generic:create) creates docker network" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testcreate redis:7-alpine
-  run docker network inspect "dokku-generic-testcreate"
+  run docker network inspect "dokku.generic.testcreate"
   assert_success
 }
 
 @test "(generic:create) starts running container" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testcreate redis:7-alpine
-  run docker container inspect -f '{{.State.Status}}' "dokku-generic-testcreate"
+  run docker container inspect -f '{{.State.Status}}' "dokku.generic.testcreate"
   assert_output "running"
 }
 
@@ -1946,7 +1946,7 @@ git commit -m "feat: subcommands/create with basic happy path"
 
 @test "(generic:create --no-start) creates state but no container" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testcreate redis:7-alpine --no-start
-  run docker container inspect "dokku-generic-testcreate"
+  run docker container inspect "dokku.generic.testcreate"
   assert_failure
   run cat "$PLUGIN_DATA_HOST_ROOT/testcreate/IMAGE"
   assert_output "redis:7-alpine"
@@ -1966,7 +1966,7 @@ git commit -m "feat: subcommands/create with basic happy path"
 
 @test "(generic:create) container has env from --env" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testcreate redis:7-alpine --env REDIS_PASSWORD=sekret --cmd "redis-server --requirepass sekret"
-  run docker exec dokku-generic-testcreate env
+  run docker exec dokku.generic.testcreate env
   assert_contains "$output" "REDIS_PASSWORD=sekret"
 }
 ```
@@ -2226,7 +2226,7 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testdestroy redis:7-alpine
   run dokku "$PLUGIN_COMMAND_PREFIX:destroy" testdestroy --force
   assert_success
-  run docker container inspect "dokku-generic-testdestroy"
+  run docker container inspect "dokku.generic.testdestroy"
   assert_failure
 }
 
@@ -2239,7 +2239,7 @@ teardown() {
 @test "(generic:destroy) removes docker network" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" testdestroy redis:7-alpine
   dokku "$PLUGIN_COMMAND_PREFIX:destroy" testdestroy --force
-  run docker network inspect "dokku-generic-testdestroy"
+  run docker network inspect "dokku.generic.testdestroy"
   assert_failure
 }
 
@@ -2867,7 +2867,7 @@ docker exec dokku-generic-test dokku generic:create demo redis:7-alpine \
   --port 6379 \
   --scheme redis \
   --env REDIS_PASSWORD=secret \
-  --link-env DEMO_URL=redis://:secret@dokku-generic-demo:6379 \
+  --link-env DEMO_URL=redis://:secret@dokku.generic.demo:6379 \
   --mount /data \
   --cmd "redis-server --requirepass secret"
 ```
@@ -2886,7 +2886,7 @@ Expected: list показывает demo, info показывает running, con
 - [ ] **Step 4: Проверить контейнер реально работает**
 
 ```bash
-docker exec dokku-generic-test docker exec dokku-generic-demo redis-cli -a secret ping
+docker exec dokku-generic-test docker exec dokku.generic.demo redis-cli -a secret ping
 ```
 Expected: `PONG`.
 

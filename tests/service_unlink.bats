@@ -25,7 +25,7 @@ teardown() {
   assert_not_contains "$output" "testapp"
 
   run dokku docker-options:report testapp
-  assert_not_contains "$output" "--network=dokku-generic-testpg"
+  assert_not_contains "$output" "--network=dokku.generic.testpg"
 
   run dokku config:get testapp TESTPG_URL
   assert_output ""

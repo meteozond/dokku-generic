@@ -11,10 +11,10 @@ teardown() {
 }
 
 @test "(generic:restart) recreates container with current state" {
-  initial_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testrestart)
+  initial_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testrestart)
   run dokku "$PLUGIN_COMMAND_PREFIX:restart" testrestart
   assert_success
-  new_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testrestart)
+  new_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testrestart)
   [[ "$initial_id" != "$new_id" ]]
 }
 

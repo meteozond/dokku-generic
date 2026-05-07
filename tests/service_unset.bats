@@ -42,9 +42,9 @@ teardown() {
 }
 
 @test "(generic:unset) restarts service" {
-  initial_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testunset)
+  initial_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testunset)
   dokku "$PLUGIN_COMMAND_PREFIX:unset" testunset --env FOO
-  new_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testunset)
+  new_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testunset)
   [[ "$initial_id" != "$new_id" ]]
 }
 

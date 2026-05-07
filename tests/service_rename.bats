@@ -37,14 +37,14 @@ teardown() {
 @test "(generic:rename) updates docker-options of linked apps" {
   dokku "$PLUGIN_COMMAND_PREFIX:rename" oldsvc newsvc
   run dokku docker-options:report testapp
-  assert_contains "$output" "--network=dokku-generic-newsvc"
-  assert_not_contains "$output" "--network=dokku-generic-oldsvc"
+  assert_contains "$output" "--network=dokku.generic.newsvc"
+  assert_not_contains "$output" "--network=dokku.generic.oldsvc"
 }
 
 @test "(generic:rename) updates link config vars" {
   dokku "$PLUGIN_COMMAND_PREFIX:rename" oldsvc newsvc
   run dokku config:get testapp NEWSVC_HOST
-  assert_output "dokku-generic-newsvc"
+  assert_output "dokku.generic.newsvc"
   run dokku config:get testapp OLDSVC_HOST
   assert_output ""
 }

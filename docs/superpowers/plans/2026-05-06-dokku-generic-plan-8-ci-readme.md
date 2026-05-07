@@ -355,8 +355,8 @@ generic:unexpose <service> <host:container>      # removes ambassador for that p
 | `connect` | Runs `redis-cli` | Use `exec <service> <command>` instead |
 | `link` URL | `REDIS_URL=redis://...` (fixed) | `<SERVICE>_HOST/PORT/URL` (auto-prefix) + `LINK_ENV` |
 | Backup/import/export | Yes (Redis dump) | No (out of scope; use `docker run --rm -v ... busybox tar -czf ...`) |
-| Network | Single `dokku.network` | Per-service `dokku-generic-<svc>` |
-| Linking mechanism | legacy `--link` | `--network=dokku-generic-<svc>` via docker-options |
+| Network | Single `dokku.network` | Per-service `dokku.generic.<svc>` |
+| Linking mechanism | legacy `--link` | `--network=dokku.generic.<svc>` via docker-options |
 
 ## Development
 
@@ -377,7 +377,7 @@ To release:
 2. `git tag vX.Y.Z && git push --tags`.
 3. CI builds, tests, and publishes a GitHub Release.
 
-Spec: [`docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md).
+Spec: [`docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md).
 
 ## License
 

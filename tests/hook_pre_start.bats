@@ -21,7 +21,7 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:stop" testpg
   run /var/lib/dokku/plugins/available/generic/pre-start testapp
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-testpg
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.testpg
   assert_output "running"
 }
 

@@ -32,10 +32,10 @@ teardown() {
 
 @test "(generic:start) starts a stopped service" {
   dokku "$PLUGIN_COMMAND_PREFIX:create" teststart redis:7-alpine
-  docker container stop dokku-generic-teststart
+  docker container stop dokku.generic.teststart
   run dokku "$PLUGIN_COMMAND_PREFIX:start" teststart
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-teststart
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.teststart
   assert_output "running"
 }
 
@@ -50,7 +50,7 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:create" teststart redis:7-alpine --no-start
   run dokku "$PLUGIN_COMMAND_PREFIX:start" teststart
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-teststart
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.teststart
   assert_output "running"
 }
 
@@ -130,12 +130,12 @@ teardown() {
 @test "(generic:stop) stops a running service" {
   run dokku "$PLUGIN_COMMAND_PREFIX:stop" teststop
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-teststop
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.teststop
   assert_output "exited"
 }
 
 @test "(generic:stop) is no-op when stopped" {
-  docker container stop dokku-generic-teststop
+  docker container stop dokku.generic.teststop
   run dokku "$PLUGIN_COMMAND_PREFIX:stop" teststop
   assert_success
 }
@@ -201,10 +201,10 @@ teardown() {
 }
 
 @test "(generic:restart) recreates container with current state" {
-  initial_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testrestart)
+  initial_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testrestart)
   run dokku "$PLUGIN_COMMAND_PREFIX:restart" testrestart
   assert_success
-  new_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testrestart)
+  new_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testrestart)
   [[ "$initial_id" != "$new_id" ]]
 }
 
@@ -266,14 +266,14 @@ setup() {
 }
 
 teardown() {
-  docker container unpause dokku-generic-testpause 2>/dev/null || true
+  docker container unpause dokku.generic.testpause 2>/dev/null || true
   dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpause 2>/dev/null || true
 }
 
 @test "(generic:pause) pauses running container" {
   run dokku "$PLUGIN_COMMAND_PREFIX:pause" testpause
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-testpause
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.testpause
   assert_output "paused"
 }
 
@@ -281,7 +281,7 @@ teardown() {
   dokku "$PLUGIN_COMMAND_PREFIX:pause" testpause
   run dokku "$PLUGIN_COMMAND_PREFIX:pause" testpause
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-testpause
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.testpause
   assert_output "running"
 }
 ```
@@ -355,7 +355,7 @@ teardown() {
 }
 
 @test "(generic:enter) error when not running" {
-  docker container stop dokku-generic-testenter
+  docker container stop dokku.generic.testenter
   run dokku "$PLUGIN_COMMAND_PREFIX:enter" testenter
   assert_failure
 }
@@ -435,7 +435,7 @@ teardown() {
 }
 
 @test "(generic:exec) error when not running" {
-  docker container stop dokku-generic-testexec
+  docker container stop dokku.generic.testexec
   run dokku "$PLUGIN_COMMAND_PREFIX:exec" testexec echo hi
   assert_failure
 }

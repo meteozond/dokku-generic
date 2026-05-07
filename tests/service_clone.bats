@@ -38,9 +38,9 @@ teardown() {
 @test "(generic:clone) creates separate network and starts new container" {
   dokku "$PLUGIN_COMMAND_PREFIX:clone" src newsvc
 
-  run docker network inspect dokku-generic-newsvc
+  run docker network inspect dokku.generic.newsvc
   assert_success
-  run docker container inspect -f '{{.State.Status}}' dokku-generic-newsvc
+  run docker container inspect -f '{{.State.Status}}' dokku.generic.newsvc
   assert_output "running"
 }
 

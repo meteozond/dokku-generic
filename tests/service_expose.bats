@@ -18,14 +18,14 @@ teardown() {
   run cat "$PLUGIN_DATA_HOST_ROOT/testexp/EXPOSED_PORTS"
   assert_contains "$output" "16379:6379"
 
-  run docker container inspect dokku-generic-testexp.ambassador.16379
+  run docker container inspect dokku.generic.testexp.ambassador.16379
   assert_success
 }
 
 @test "(generic:expose) does NOT restart service container" {
-  initial_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testexp)
+  initial_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testexp)
   dokku "$PLUGIN_COMMAND_PREFIX:expose" testexp 16379:6379
-  new_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testexp)
+  new_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testexp)
   [[ "$initial_id" == "$new_id" ]]
 }
 

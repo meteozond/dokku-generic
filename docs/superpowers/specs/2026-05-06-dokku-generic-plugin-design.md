@@ -25,12 +25,12 @@
 **Имя плагина:** `dokku-generic`. **Префикс команд:** `generic`. Папка проекта переименовывается из `dokku-imageplugin` в `dokku-generic`.
 
 **Имена Docker-ресурсов на сервис `<service>`:**
-- Контейнер сервиса: `dokku-generic-<service>` (= name = hostname).
-- Network: `dokku-generic-<service>` (отдельная user-defined bridge на каждый сервис — для изоляции линковки).
+- Контейнер сервиса: `dokku.generic.<service>` (= name = hostname).
+- Network: `dokku.generic.<service>` (отдельная user-defined bridge на каждый сервис — для изоляции линковки).
 - Network alias: `<service>` (короткое имя дополнительно к полному).
 - Default named volume: `dokku.generic.<service>` (для первого `--mount` без явного источника).
 - Дополнительный named volume для `<container_path>` без явного источника: `dokku.generic.<service>.<sha1(path)[:12]>`.
-- Ambassador (если есть expose): `dokku-generic-<service>.ambassador`.
+- Ambassador (если есть expose): `dokku.generic.<service>.ambassador`.
 
 **Структура файлов:**
 
@@ -179,7 +179,7 @@ dokku generic:clone <source> <new> [--copy-volumes] [флаги override]
 2. `cp -a state/<source>/ state/<new>/`.
 3. Очистить `state/<new>/LINKS` и `state/<new>/EXPOSED_PORTS` (новый сервис без линков/экспоузов).
 4. Применить override-флаги к state/<new>/.
-5. Создать новую сеть `dokku-generic-<new>`.
+5. Создать новую сеть `dokku.generic.<new>`.
 6. Создать новые named volumes (с именами от `<new>`).
 7. Если `--copy-volumes`: для каждого named volume старого → busybox copy в новый.
 8. Стартовать контейнер `<new>` (если у `<source>` не было `--no-start`-маркера).
@@ -194,15 +194,15 @@ dokku generic:rename <old> <new>
 2. Записать список linked apps из `state/<old>/LINKS` (`old_links`).
 3. Stop старого контейнера (если запущен).
 4. `mv state/<old>/ state/<new>/`.
-5. Создать новую сеть `dokku-generic-<new>`.
+5. Создать новую сеть `dokku.generic.<new>`.
 6. Создать новые named volumes с именами от `<new>`.
 7. Скопировать данные всех named volumes старого → новые (busybox), bind-mount хост-пути остаются как есть.
-8. Удалить старый контейнер (`docker rm dokku-generic-<old>`).
-9. Удалить старую сеть (`docker network rm dokku-generic-<old>`).
+8. Удалить старый контейнер (`docker rm dokku.generic.<old>`).
+9. Удалить старую сеть (`docker network rm dokku.generic.<old>`).
 10. Удалить старые named volumes.
 11. Стартовать новый контейнер.
 12. Для каждого app в `old_links`:
-    - В `docker-options`: убрать `--network=dokku-generic-<old>`, добавить `--network=dokku-generic-<new>`.
+    - В `docker-options`: убрать `--network=dokku.generic.<old>`, добавить `--network=dokku.generic.<new>`.
     - В config app: удалить `<OLD_PREFIX>_HOST/PORT/URL` и переменные старого `LINK_ENV`, добавить переменные с новым префиксом и текущим `LINK_ENV` сервиса.
     - Триггерит рестарт app (по правилам `dokku config:set`).
 
@@ -269,10 +269,10 @@ dokku generic:promote <service> <app>   # сделать линк primary (ко�
 1. Префикс переменных = `--alias` или uppercase имени сервиса (с `-`/`.` → `_`). Пример: `my-pg` → `MY_PG`.
 2. Если уже есть `<PREFIX>_URL` в config app → сгенерировать альтернативный alias `<PREFIX>2`/`<PREFIX>3`/... (как у dokku-redis).
 3. Записать app в `LINKS`-файл сервиса.
-4. Добавить опцию `--network=dokku-generic-<service>` в `dokku docker-options` для phases `build,deploy,run` у app.
+4. Добавить опцию `--network=dokku.generic.<service>` в `dokku docker-options` для phases `build,deploy,run` у app.
 5. Сформировать переменные:
-   - `<PREFIX>_HOST=dokku-generic-<service>` (всегда).
-   - Если задан port: `<PREFIX>_PORT=<port>`, `<PREFIX>_URL=<scheme>://dokku-generic-<service>:<port>`.
+   - `<PREFIX>_HOST=dokku.generic.<service>` (всегда).
+   - Если задан port: `<PREFIX>_PORT=<port>`, `<PREFIX>_URL=<scheme>://dokku.generic.<service>:<port>`.
    - Все ключи из `LINK_ENV/`-конфига сервиса (могут перекрыть автогенерированные при совпадении).
 6. Записать в config app через `dokku config:set <app> <vars>` (триггерит рестарт app).
 
@@ -285,7 +285,7 @@ dokku generic:expose <service> <host_port>:<container_port> [--bind 0.0.0.0]
 dokku generic:unexpose <service> <host_port>:<container_port>
 ```
 
-При первом `expose` — стартует ambassador-контейнер `dokku-generic-<service>.ambassador` на образе `$PLUGIN_AMBASSADOR_IMAGE` (default `dokku/ambassador:0.8.2`), подключённый к сети `dokku-generic-<service>`, с `-p <host>:<container>`. При последующих `expose` — ambassador пересобирается через `docker stop + docker rm + docker run` с обновлённым набором `-p` (атомарность набора не критична: ambassador не хранит состояние). При `unexpose` последнего порта — ambassador удаляется (`stop + rm`). Сам сервисный контейнер не трогается ни в одном из сценариев.
+При первом `expose` — стартует ambassador-контейнер `dokku.generic.<service>.ambassador` на образе `$PLUGIN_AMBASSADOR_IMAGE` (default `dokku/ambassador:0.8.2`), подключённый к сети `dokku.generic.<service>`, с `-p <host>:<container>`. При последующих `expose` — ambassador пересобирается через `docker stop + docker rm + docker run` с обновлённым набором `-p` (атомарность набора не критична: ambassador не хранит состояние). При `unexpose` последнего порта — ambassador удаляется (`stop + rm`). Сам сервисный контейнер не трогается ни в одном из сценариев.
 
 ## 4. Модель данных и хранилище состояния
 
@@ -342,7 +342,7 @@ dokku generic:unexpose <service> <host_port>:<container_port>
 Если `docker run` упал при `create`:
 1. Удалить state-каталог.
 2. Удалить созданные named volumes (`docker volume rm dokku.generic.<service>*`).
-3. Удалить созданную сеть (`docker network rm dokku-generic-<service>`).
+3. Удалить созданную сеть (`docker network rm dokku.generic.<service>`).
 4. Exit 1 с понятной ошибкой.
 
 ## 5. Docker integration, networking, lifecycle hooks
@@ -351,13 +351,13 @@ dokku generic:unexpose <service> <host_port>:<container_port>
 
 ```bash
 docker container run \
-  --name dokku-generic-<service> \
-  --hostname dokku-generic-<service> \
+  --name dokku.generic.<service> \
+  --hostname dokku.generic.<service> \
   --restart unless-stopped \
   --label dokku=service \
   --label dokku.service=generic \
   --label dokku.generic.service=<service> \
-  --network dokku-generic-<service> \
+  --network dokku.generic.<service> \
   --network-alias <service> \
   $(docker_args_from_state)        # содержимое DOCKER_ARGS, по строке = одно значение
   $(env_to_docker_args ENV)        # -e KEY=VALUE
@@ -370,11 +370,11 @@ docker container run \
 
 ### 5.2 Networking стратегия
 
-**Сеть на сервис** `dokku-generic-<service>` (user-defined bridge).
+**Сеть на сервис** `dokku.generic.<service>` (user-defined bridge).
 
 - Создаётся при `create`, удаляется при `destroy`.
 - Сервисный контейнер всегда в этой сети, `--network-alias <service>` даёт короткое DNS-имя.
-- При `link <svc> <app>` → `dokku docker-options:add <app> build,deploy,run --network=dokku-generic-<svc>`. При следующем рестарте app получает доп. сеть и резолвит сервис по DNS-имени `dokku-generic-<svc>` (полное) или `<svc>` (alias).
+- При `link <svc> <app>` → `dokku docker-options:add <app> build,deploy,run --network=dokku.generic.<svc>`. При следующем рестарте app получает доп. сеть и резолвит сервис по DNS-имени `dokku.generic.<svc>` (полное) или `<svc>` (alias).
 - При `unlink` → `dokku docker-options:remove <app> ...`.
 - App, линкованный к нескольким generic-сервисам, попадает во все соответствующие сети (Docker это поддерживает).
 - Ambassador-контейнер в той же per-service сети.
@@ -404,7 +404,7 @@ docker container run \
 для каждого SERVICE с <old> в LINKS:
   add_to_links_file SERVICE <new>
   скопировать соответствующие env-переменные в config <new>
-  добавить --network=dokku-generic-<SERVICE> в docker-options <new>
+  добавить --network=dokku.generic.<SERVICE> в docker-options <new>
 ```
 
 `post-app-rename-setup <old> <new>`:
@@ -558,8 +558,8 @@ flowchart TB
             files["IMAGE · PORT · SCHEME<br/>ENV · LINK_ENV · MOUNTS<br/>LINKS · EXPOSED_PORTS<br/>CMD · ENTRYPOINT · DOCKER_ARGS"]
         end
 
-        subgraph network["🌐 Docker network: dokku-generic-&lt;svc&gt;"]
-            svc["📦 dokku-generic-&lt;svc&gt;<br/>──────<br/>пользовательский образ<br/>--restart unless-stopped<br/>aliases: &lt;svc&gt;"]
+        subgraph network["🌐 Docker network: dokku.generic.&lt;svc&gt;"]
+            svc["📦 dokku.generic.&lt;svc&gt;<br/>──────<br/>пользовательский образ<br/>--restart unless-stopped<br/>aliases: &lt;svc&gt;"]
             amb["📦 ambassador<br/>──────<br/>dokku/ambassador<br/>socat-proxy"]
             app["📦 app container<br/>──────<br/>--network через<br/>docker-options"]
         end
@@ -577,7 +577,7 @@ flowchart TB
     cli -- "docker run -p HOST:CONTAINER" --> amb
 
     files -. "при start читаются" .-> svc
-    svc -- "DNS: &lt;svc&gt; / dokku-generic-&lt;svc&gt;" --> app
+    svc -- "DNS: &lt;svc&gt; / dokku.generic.&lt;svc&gt;" --> app
     amb -- "TCP proxy" --> svc
     host_port -- "expose" --> amb
 
@@ -687,7 +687,7 @@ sequenceDiagram
     Common->>Common: проверить, не уже линкован?
     Common->>Common: вычислить PREFIX = "PG" (или PG2 если занят)
     Common->>Common: add_to_links_file(pg, myapp)
-    Common->>Dokku: docker-options:add myapp build,deploy,run<br/>"--network=dokku-generic-pg"
+    Common->>Dokku: docker-options:add myapp build,deploy,run<br/>"--network=dokku.generic.pg"
     Common->>Common: собрать ENV: PG_HOST, PG_PORT, PG_URL,<br/>+ всё из LINK_ENV/
     Common->>Dokku: config:set myapp PG_HOST=... PG_PORT=... PG_URL=...
     Dokku->>Docker: docker stop/start myapp container<br/>(теперь с --network)

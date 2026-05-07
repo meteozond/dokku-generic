@@ -16,7 +16,7 @@ teardown() {
   assert_success
   run cat "$PLUGIN_DATA_HOST_ROOT/testset/IMAGE"
   assert_output "redis:7"
-  run docker container inspect -f '{{.Config.Image}}' "dokku-generic-testset"
+  run docker container inspect -f '{{.Config.Image}}' "dokku.generic.testset"
   assert_output "redis:7"
 }
 
@@ -64,7 +64,7 @@ teardown() {
 
 @test "(generic:set --entrypoint) updates ENTRYPOINT" {
   # Stop container so set doesn't try to restart with bad entrypoint
-  docker container stop dokku-generic-testset 2>/dev/null || true
+  docker container stop dokku.generic.testset 2>/dev/null || true
   dokku "$PLUGIN_COMMAND_PREFIX:set" testset --entrypoint /bin/myinit
   run cat "$PLUGIN_DATA_HOST_ROOT/testset/ENTRYPOINT"
   assert_output "/bin/myinit"
@@ -77,9 +77,9 @@ teardown() {
 }
 
 @test "(generic:set) restarts container after change" {
-  initial_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testset)
+  initial_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testset)
   dokku "$PLUGIN_COMMAND_PREFIX:set" testset --env NEW=var
-  new_id=$(docker container inspect -f '{{.Id}}' dokku-generic-testset)
+  new_id=$(docker container inspect -f '{{.Id}}' dokku.generic.testset)
   [[ "$initial_id" != "$new_id" ]] || flunk "expected container to be recreated"
 }
 
