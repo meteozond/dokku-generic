@@ -273,7 +273,7 @@ To compose custom URLs without hardcoding the service DNS name, use these placeh
 | Placeholder | Replaced with |
 |---|---|
 | `%h` | service DNS name (`dokku-generic-<svc>`) |
-| `%p` | port (from `--port`; empty if not set) |
+| `%p` | port (from `--port`; empty if not set — patterns like `%h:%p` produce a trailing colon when service has no port) |
 | `%s` | scheme (from `--scheme`, default `tcp`) |
 
 Example:
