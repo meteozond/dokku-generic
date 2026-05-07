@@ -89,3 +89,20 @@ teardown() {
   rm -f "$PLUGIN_DATA_HOST_ROOT/testpg2/LINKS"
   dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpg2
 }
+
+@test "(generic:link) %% escapes literal % in link-env values" {
+  dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpg2 2>/dev/null || true
+  dokku "$PLUGIN_COMMAND_PREFIX:create" testpg2 redis:7-alpine --port 6379 --scheme redis \
+    --link-env LITERAL='%%h is %h' \
+    --link-env DOUBLE_PERCENT='100%% sure: %h:%p'
+  dokku "$PLUGIN_COMMAND_PREFIX:link" testpg2 testapp
+
+  run dokku config:get testapp LITERAL
+  assert_output "%h is dokku-generic-testpg2"
+
+  run dokku config:get testapp DOUBLE_PERCENT
+  assert_output "100% sure: dokku-generic-testpg2:6379"
+
+  rm -f "$PLUGIN_DATA_HOST_ROOT/testpg2/LINKS"
+  dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpg2
+}
