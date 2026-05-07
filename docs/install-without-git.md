@@ -127,6 +127,36 @@ docker exec dokku bash -c '
 '
 ```
 
+## After copying files — REQUIRED init step
+
+Whichever copy method you used, after files are in `/var/lib/dokku/plugins/available/generic/`, you MUST run the install script (creates `/var/lib/dokku/services/generic` with correct ownership and pulls ambassador/busybox images):
+
+```bash
+ssh root@dokku-server '
+  chown -R dokku:dokku /var/lib/dokku/plugins/available/generic
+  /var/lib/dokku/plugins/available/generic/install
+  dokku plugin:enable generic
+'
+```
+
+Equivalent via `dokku plugin:install-dependencies --core` (Dokku internally invokes our `install` script):
+
+```bash
+ssh root@dokku-server '
+  chown -R dokku:dokku /var/lib/dokku/plugins/available/generic
+  dokku plugin:enable generic
+  dokku plugin:install-dependencies --core
+'
+```
+
+If you skip this step, the first `dokku generic:create ...` will fail with:
+
+```
+mkdir: cannot create directory '/var/lib/dokku/services/generic': Permission denied
+```
+
+— because the dokku user can't write to `/var/lib/dokku/services/` (it belongs to root by default; only the install script (running as root) can create per-plugin subdirs and chown them to dokku).
+
 ## Verifying
 
 After install, on the Dokku host:
