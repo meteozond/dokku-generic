@@ -15,7 +15,7 @@ dokku plugin:install file:///tmp/dokku-generic generic
 
 This runs the same install pipeline as the git path: copy → chown → enable → install-dependencies.
 
-## Option 2 — rsync
+## Option 2 — rsync (incremental, with excludes)
 
 ```bash
 # from your local checkout:
@@ -32,7 +32,27 @@ ssh root@dokku-server bash -c '
 '
 ```
 
-## Option 3 — tarball
+`rsync` is the right choice when you want to **resume** an interrupted transfer or **update** an existing install (only changed files copied).
+
+## Option 3 — `scp -r` (one-shot directory copy)
+
+If you don't have rsync but want a single command:
+
+```bash
+# from your local checkout (assuming clean tree without unwanted files):
+scp -r /path/to/dokku-generic-source root@dokku-server:/var/lib/dokku/plugins/available/generic
+
+# on the Dokku host:
+ssh root@dokku-server bash -c '
+  chown -R dokku:dokku /var/lib/dokku/plugins/available/generic
+  dokku plugin:enable generic
+  dokku plugin:install-dependencies --core
+'
+```
+
+`scp -r` copies the whole directory but **has no `--exclude`** — you'll also transfer `.git/`, `tmp/`, IDE files etc. Either clean the tree first or use rsync.
+
+## Option 4 — tarball (compressed, single file)
 
 ```bash
 # locally — package the plugin:
@@ -51,7 +71,7 @@ dokku plugin:enable generic
 dokku plugin:install-dependencies --core
 ```
 
-## Option 4 — `docker cp` (Dokku running in Docker)
+## Option 5 — `docker cp` (Dokku running in Docker)
 
 ```bash
 # Dokku is in a container called dokku:
