@@ -78,6 +78,13 @@ ssh root@dokku-server bash -c '
   ssh root@dokku-server 'rm -rf /var/lib/dokku/plugins/available/generic/{.git,tmp,docs,.github,.idea,.claude}'
   ```
 
+- **Bash extglob to skip specific entries** (zero or one transfer; works in bash, may need `shopt -s extglob`):
+  ```bash
+  shopt -s extglob
+  scp -r !(.git|tmp|docs|.idea|.claude) root@dokku-server:/var/lib/dokku/plugins/available/generic/
+  ```
+  Note: plain `scp -r ./*` also skips dotfiles, but that drops `.actrc`/`.editorconfig`/`.github/` which you usually want — extglob lets you exclude only the noise.
+
 ## Option 4 — tarball (compressed, single file)
 
 ```bash
