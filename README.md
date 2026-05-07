@@ -25,7 +25,7 @@ Run any Docker image as a Dokku-managed service — env vars, volumes, port expo
 ## Installation
 
 ```bash
-sudo dokku plugin:install https://github.com/<owner>/dokku-generic.git generic
+sudo dokku plugin:install https://github.com/meteozond/dokku-generic.git generic
 ```
 
 For installation **without git** (rsync/scp/tarball/`docker cp`), see [docs/install-without-git.md](docs/install-without-git.md).
@@ -71,7 +71,10 @@ dokku generic:create atlassian-mcp ghcr.io/sooperset/mcp-atlassian:latest \
   --env CONFLUENCE_API_TOKEN=xxxxxxxxxx
 
 dokku generic:link atlassian-mcp myapp
-# myapp gets: ATLASSIAN_MCP_HOST, ATLASSIAN_MCP_PORT, ATLASSIAN_MCP_URL=http://...:9000
+# myapp gets in its config:
+#   ATLASSIAN_MCP_HOST=dokku-generic-atlassian-mcp
+#   ATLASSIAN_MCP_PORT=9000
+#   ATLASSIAN_MCP_URL=http://dokku-generic-atlassian-mcp:9000
 ```
 
 ### Filesystem MCP
@@ -86,6 +89,10 @@ dokku generic:create fs-mcp mcp/filesystem:latest \
   --cmd "/data"
 
 dokku generic:link fs-mcp myapp
+# myapp gets in its config:
+#   FS_MCP_HOST=dokku-generic-fs-mcp
+#   FS_MCP_PORT=9001
+#   FS_MCP_URL=http://dokku-generic-fs-mcp:9001
 ```
 
 ### Postgres MCP
@@ -102,6 +109,10 @@ dokku generic:create pg-mcp mcp/postgres:latest \
   --docker-arg "--network=dokku-postgres-mydb"
 
 dokku generic:link pg-mcp myapp
+# myapp gets in its config:
+#   PG_MCP_HOST=dokku-generic-pg-mcp
+#   PG_MCP_PORT=9002
+#   PG_MCP_URL=http://dokku-generic-pg-mcp:9002
 ```
 
 ## Commands
