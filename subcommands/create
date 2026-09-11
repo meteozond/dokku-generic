@@ -135,7 +135,6 @@ ROOT="$(service_root "$SERVICE")"
 CONTAINER="$(service_container_name "$SERVICE")"
 NETWORK="$(service_network_name "$SERVICE")"
 
-# Pull image
 if ! "$DOCKER_BIN" image inspect "$IMAGE" >/dev/null 2>&1; then
   dokku_log_info1 "Pulling image $IMAGE"
   "$DOCKER_BIN" image pull "$IMAGE"
@@ -188,7 +187,6 @@ for spec in "${MOUNTS[@]}"; do
   echo "$spec" >>"$ROOT/MOUNTS"
 done
 
-# Docker args
 for da in "${DOCKER_ARGS[@]}"; do
   echo "$da" >>"$ROOT/DOCKER_ARGS"
 done
@@ -235,7 +233,7 @@ done
 "$DOCKER_BIN" container run -d \
   --name "$CONTAINER" \
   --hostname "$CONTAINER" \
-  --restart unless-stopped \
+  --restart "$PLUGIN_RESTART_POLICY" \
   --label dokku=service \
   --label "dokku.service=$PLUGIN_SERVICE" \
   --label "dokku.generic.service=$SERVICE" \

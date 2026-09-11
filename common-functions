@@ -93,7 +93,6 @@ parse_mount_spec() {
     mode="ro"
     spec="${spec%:[Rr][Oo]}"
   elif [[ "$spec" == *:[Rr][Ww] ]]; then
-    mode="rw"
     spec="${spec%:[Rr][Ww]}"
   fi
 

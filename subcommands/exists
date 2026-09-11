@@ -13,8 +13,4 @@ if [[ -z "$SERVICE" ]]; then
   dokku_log_fail "Please specify a valid name for the service"
 fi
 
-if service_exists "$SERVICE"; then
-  exit 0
-else
-  exit 1
-fi
+service_exists "$SERVICE"

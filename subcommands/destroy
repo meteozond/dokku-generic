@@ -53,7 +53,6 @@ fi
 
 dokku_log_info2_quiet "Deleting $SERVICE"
 
-# Stop & rm container
 "$DOCKER_BIN" container rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
 # Stop & rm all per-port ambassadors of this service
@@ -69,10 +68,8 @@ if [[ -n "$volumes" ]]; then
   echo "$volumes" | xargs -r "$DOCKER_BIN" volume rm >/dev/null 2>&1 || true
 fi
 
-# Remove network
 "$DOCKER_BIN" network rm "$NETWORK" >/dev/null 2>&1 || true
 
-# Remove state
 rm -rf "$ROOT"
 
 dokku_log_info2 "$PLUGIN_SERVICE container deleted: $SERVICE"

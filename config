@@ -10,5 +10,6 @@ export PLUGIN_NETWORK_PREFIX="dokku.generic"
 export PLUGIN_CONTAINER_PREFIX="dokku.generic"
 export PLUGIN_VOLUME_PREFIX="dokku.generic"
 export PLUGIN_STOP_TIMEOUT="${PLUGIN_STOP_TIMEOUT:-10}"
+export PLUGIN_RESTART_POLICY="${PLUGIN_RESTART_POLICY:-unless-stopped}"
 
 export DOCKER_BIN="${DOCKER_BIN:-docker}"

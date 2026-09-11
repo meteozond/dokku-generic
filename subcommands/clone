@@ -53,7 +53,6 @@ service_exists "$TARGET" && dokku_log_fail "Target $TARGET already exists"
 SOURCE_ROOT="$(service_root "$SOURCE")"
 TARGET_ROOT="$(service_root "$TARGET")"
 
-# Copy state directory
 cp -a "$SOURCE_ROOT" "$TARGET_ROOT"
 
 # Reset per-instance fields
@@ -70,7 +69,6 @@ if [[ $COPY_VOLUMES -eq 1 ]]; then
   done < <(list_service_volumes "$SOURCE")
 fi
 
-# Create network and start container
 NETWORK="$(service_network_name "$TARGET")"
 "$DOCKER_BIN" network inspect "$NETWORK" >/dev/null 2>&1 ||
   "$DOCKER_BIN" network create "$NETWORK" >/dev/null

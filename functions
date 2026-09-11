@@ -112,7 +112,7 @@ service_restart_internal() {
   "$DOCKER_BIN" container run -d \
     --name "$container" \
     --hostname "$container" \
-    --restart unless-stopped \
+    --restart "$PLUGIN_RESTART_POLICY" \
     --label dokku=service \
     --label "dokku.service=$PLUGIN_SERVICE" \
     --label "dokku.generic.service=$service" \
@@ -147,11 +147,21 @@ service_url() {
   local root port scheme
   root="$(service_root "$service")"
   port=""
-  scheme="tcp"
   [[ -f "$root/PORT" ]] && port=$(cat "$root/PORT")
-  [[ -f "$root/SCHEME" ]] && scheme=$(cat "$root/SCHEME")
   [[ -z "$port" ]] && return 0
+  scheme="$(service_scheme_or_default "$service")"
   printf '%s://%s:%s' "$scheme" "$(service_container_name "$service")" "$port"
+}
+
+# Reads SCHEME state file for a service, or returns "tcp" as the default.
+service_scheme_or_default() {
+  local root
+  root="$(service_root "$1")"
+  if [[ -f "$root/SCHEME" ]]; then
+    cat "$root/SCHEME"
+  else
+    printf 'tcp'
+  fi
 }
 
 # Returns the next available alias for the app config, avoiding collisions.

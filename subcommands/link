@@ -85,7 +85,7 @@ if [[ -f "$ROOT/LINK_ENV" ]]; then
   DNS_VAL="$(service_container_name "$SERVICE")"
   PORT_VAL=""
   [[ -s "$ROOT/PORT" ]] && PORT_VAL=$(<"$ROOT/PORT")
-  SCHEME_VAL="$(cat "$ROOT/SCHEME" 2>/dev/null || echo "tcp")"
+  SCHEME_VAL="$(service_scheme_or_default "$SERVICE")"
   # Sentinel: a control char that cannot appear in valid URLs/env values
   SENTINEL=$'\001'
   while IFS= read -r line; do

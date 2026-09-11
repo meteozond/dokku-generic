@@ -17,11 +17,9 @@ ROOT="$(service_root "$SERVICE")"
 
 echo "=====> $SERVICE generic service configuration"
 
-# Port & scheme
 [[ -s "$ROOT/PORT" ]] && printf '       Port:    %s\n' "$(<"$ROOT/PORT")"
 [[ -s "$ROOT/SCHEME" ]] && printf '       Scheme:  %s\n' "$(<"$ROOT/SCHEME")"
 
-# ENV
 echo "       Env:"
 if [[ -s "$ROOT/ENV" ]]; then
   while IFS= read -r line; do
@@ -32,7 +30,6 @@ else
   echo "         (none)"
 fi
 
-# LINK_ENV
 echo "       Link env:"
 if [[ -s "$ROOT/LINK_ENV" ]]; then
   while IFS= read -r line; do
@@ -43,7 +40,6 @@ else
   echo "         (none)"
 fi
 
-# Mounts
 echo "       Mounts:"
 if [[ -s "$ROOT/MOUNTS" ]]; then
   while IFS= read -r line; do
@@ -54,7 +50,6 @@ else
   echo "         (none)"
 fi
 
-# Exposed ports
 echo "       Exposed ports:"
 if [[ -s "$ROOT/EXPOSED_PORTS" ]]; then
   while IFS= read -r line; do
