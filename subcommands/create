@@ -223,6 +223,15 @@ trap cleanup_on_fail ERR
 build_run_args "$SERVICE"
 build_cmd_args "$SERVICE"
 
+# Skip the per-service network when the user supplied their own
+# network mode (e.g. --net=host) — docker forbids combining them.
+NET_ARGS=(--network "$NETWORK" --network-alias "$SERVICE")
+for _da in "${_DOCKER_RUN_ARGS[@]}"; do
+  case "$_da" in
+    --net | --net=* | --network | --network=*) NET_ARGS=() ;;
+  esac
+done
+
 "$DOCKER_BIN" container run -d \
   --name "$CONTAINER" \
   --hostname "$CONTAINER" \
@@ -230,8 +239,7 @@ build_cmd_args "$SERVICE"
   --label dokku=service \
   --label "dokku.service=$PLUGIN_SERVICE" \
   --label "dokku.generic.service=$SERVICE" \
-  --network "$NETWORK" \
-  --network-alias "$SERVICE" \
+  "${NET_ARGS[@]}" \
   "${_DOCKER_RUN_ARGS[@]}" \
   "$IMAGE" \
   "${_DOCKER_CMD_ARGS[@]}" >/dev/null

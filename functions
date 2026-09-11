@@ -99,6 +99,16 @@ service_restart_internal() {
   build_run_args "$service"
   build_cmd_args "$service"
 
+  # Skip the per-service network when the user supplied their own
+  # network mode (e.g. --net=host) — docker forbids combining them.
+  local _net_args=(--network "$network" --network-alias "$service")
+  local _da
+  for _da in "${_DOCKER_RUN_ARGS[@]}"; do
+    case "$_da" in
+      --net | --net=* | --network | --network=*) _net_args=() ;;
+    esac
+  done
+
   "$DOCKER_BIN" container run -d \
     --name "$container" \
     --hostname "$container" \
@@ -106,8 +116,7 @@ service_restart_internal() {
     --label dokku=service \
     --label "dokku.service=$PLUGIN_SERVICE" \
     --label "dokku.generic.service=$service" \
-    --network "$network" \
-    --network-alias "$service" \
+    "${_net_args[@]}" \
     "${_DOCKER_RUN_ARGS[@]}" \
     "$image" \
     "${_DOCKER_CMD_ARGS[@]}" >/dev/null
