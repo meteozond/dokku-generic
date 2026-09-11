@@ -182,7 +182,7 @@ service_alternative_alias() {
       printf '%s%d' "$base_alias" "$i"
       return 0
     fi
-    ((i++))
+    i=$((i + 1))
     [[ $i -gt 99 ]] && return 1
   done
 }

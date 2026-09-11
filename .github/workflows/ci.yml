@@ -22,12 +22,18 @@ jobs:
           curl -fsSL https://github.com/mvdan/sh/releases/download/v3.7.0/shfmt_v3.7.0_linux_amd64 -o /tmp/shfmt
           chmod +x /tmp/shfmt
           sudo mv /tmp/shfmt /usr/local/bin/shfmt
+      - name: Install bashate
+        run: |
+          pip install --user bashate
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Validate plugin.toml exists and is non-empty
         run: test -s plugin.toml && head -5 plugin.toml
       - name: Run shellcheck
         run: make shellcheck
       - name: Check shfmt
         run: make shfmt
+      - name: Run bashate
+        run: make bashate
 
   unit-tests:
     name: unit-tests

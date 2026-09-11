@@ -125,7 +125,7 @@ while :; do
     ALT_ALIAS="$candidate"
     break
   fi
-  ((i++))
+  i=$((i + 1))
   [[ $i -gt 99 ]] && dokku_log_fail "Could not find free alias slot for $APP"
 done
 
