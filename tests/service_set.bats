@@ -114,3 +114,13 @@ teardown() {
   count=$(grep -cxF "/data" "$PLUGIN_DATA_HOST_ROOT/testset/MOUNTS")
   [[ "$count" -eq 1 ]] || flunk "expected one /data entry, got $count"
 }
+
+@test "(generic:set --no-restart) skips restart on running service" {
+  # Grab container start time before set
+  before=$(docker container inspect -f '{{.State.StartedAt}}' dokku.generic.testset)
+  sleep 1
+  run dokku "$PLUGIN_COMMAND_PREFIX:set" testset --env FOO=bar --no-restart
+  assert_success
+  after=$(docker container inspect -f '{{.State.StartedAt}}' dokku.generic.testset)
+  [[ "$before" == "$after" ]] || flunk "container was restarted despite --no-restart (before=$before after=$after)"
+}
