@@ -7,6 +7,12 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-12
+
+### Changed
+
+- CI integration matrix now covers the latest Dokku 0.38 series (0.38.27) alongside 0.35.20 / 0.36.4 / 0.37.10.
+
 ## [1.1.0] - 2026-09-12
 
 ### Added
@@ -125,7 +131,8 @@ Initial release.
 - Full `README.md` with quick-start, three MCP-server examples (Atlassian, filesystem, Postgres), command reference, environment overrides, differences from `dokku-redis`, development section.
 - `INSTALL.md` — installation without `dokku plugin:install <git>`: rsync, `scp -r`, `git archive`, `tar` pipe, `docker cp`; includes zsh/bash equivalents for excluding dotfiles.
 
-[Unreleased]: https://github.com/meteozond/dokku-generic/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/meteozond/dokku-generic/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/meteozond/dokku-generic/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/meteozond/dokku-generic/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/meteozond/dokku-generic/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/meteozond/dokku-generic/releases/tag/v1.0.0

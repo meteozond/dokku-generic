@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dokku-version: ["0.35.20", "0.36.4", "0.37.10"]
+        dokku-version: ["0.35.20", "0.36.4", "0.37.10", "0.38.27"]
     env:
       DOKKU_TAG: ${{ matrix.dokku-version }}
     steps:
