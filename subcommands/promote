@@ -27,30 +27,25 @@ while IFS='=' read -r key val; do
 done < <(dokku config:export --format=envfile "$APP" 2>/dev/null || true)
 
 # Find keys whose value references THIS service's DNS name
-declare -a OUR_KEYS=()
-for k in "${!APP_CONFIG[@]}"; do
-  v="${APP_CONFIG[$k]}"
-  if [[ "$v" == *"$DNS"* ]]; then
-    OUR_KEYS+=("$k")
-  fi
-done
-
-if [[ ${#OUR_KEYS[@]} -eq 0 ]]; then
-  dokku_log_fail "Service $SERVICE is not linked to $APP"
+# Determine our prefix. Preferred source: state/APPS/<app>. Legacy fallback:
+# scan app config for keys whose value references our container DNS.
+ROOT="$(service_root "$SERVICE")"
+OUR_ALIAS_FILE="$ROOT/APPS/$APP"
+OUR_PREFIX=""
+if [[ -f "$OUR_ALIAS_FILE" ]]; then
+  OUR_PREFIX=$(<"$OUR_ALIAS_FILE")
+else
+  for k in "${!APP_CONFIG[@]}"; do
+    v="${APP_CONFIG[$k]}"
+    if [[ "$v" == *"$DNS"* && "$k" =~ _HOST$ ]]; then
+      OUR_PREFIX="${k%_HOST}"
+      break
+    fi
+  done
 fi
 
-# Derive the current prefix for our service from its HOST key
-# e.g. PG2_HOST → prefix PG2
-OUR_PREFIX=""
-for k in "${OUR_KEYS[@]}"; do
-  if [[ "$k" =~ _HOST$ ]]; then
-    OUR_PREFIX="${k%_HOST}"
-    break
-  fi
-done
-
 if [[ -z "$OUR_PREFIX" ]]; then
-  dokku_log_fail "Could not determine alias prefix for $SERVICE in $APP"
+  dokku_log_fail "Service $SERVICE is not linked to $APP"
 fi
 
 # Derive the root prefix by stripping trailing digits (PG2 → PG, DATABASE3 → DATABASE).
@@ -83,6 +78,9 @@ if [[ -z "$PRIMARY_HOST_VAL" ]]; then
   if [[ ${#TO_SET[@]} -gt 0 ]]; then
     dokku config:set "$APP" "${TO_SET[@]}"
   fi
+  # Record the new alias for our service
+  mkdir -p "$ROOT/APPS"
+  printf '%s\n' "$ROOT_PREFIX" >"$ROOT/APPS/$APP"
   dokku_log_info2 "Promoted $SERVICE to primary for $APP"
   exit 0
 fi
@@ -137,6 +135,16 @@ if [[ ${#TO_UNSET[@]} -gt 0 ]]; then
 fi
 if [[ ${#TO_SET[@]} -gt 0 ]]; then
   dokku config:set "$APP" "${TO_SET[@]}"
+fi
+
+# Update alias files: our service takes ROOT_PREFIX, the other service moves to ALT_ALIAS.
+mkdir -p "$ROOT/APPS"
+printf '%s\n' "$ROOT_PREFIX" >"$ROOT/APPS/$APP"
+# PRIMARY_HOST_VAL is like "dokku.generic.<other-svc>"; strip the "<prefix>." prefix.
+OTHER_SVC="${PRIMARY_HOST_VAL#"${PLUGIN_CONTAINER_PREFIX}."}"
+if [[ -n "$OTHER_SVC" ]] && service_exists "$OTHER_SVC"; then
+  mkdir -p "$(service_root "$OTHER_SVC")/APPS"
+  printf '%s\n' "$ALT_ALIAS" >"$(service_root "$OTHER_SVC")/APPS/$APP"
 fi
 
 dokku_log_info2 "Promoted $SERVICE to primary for $APP"

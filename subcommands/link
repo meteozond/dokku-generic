@@ -66,6 +66,11 @@ fi
 # Add app to LINKS file
 echo "$APP" >>"$LINKS_FILE"
 
+# Record the resolved alias — unlink/promote/rename read this to know exactly
+# which config keys we injected, without having to guess from DNS matches.
+mkdir -p "$ROOT/APPS"
+printf '%s\n' "$ALIAS" >"$ROOT/APPS/$APP"
+
 # Add network to docker-options
 dokku docker-options:add "$APP" build,deploy,run "--network=$NETWORK"
 
