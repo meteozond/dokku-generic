@@ -11,7 +11,7 @@ SERVICE=""
 FLAG=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --image | --status | --port | --internal-ip | --links | --exposed-ports)
+    --image | --status | --port | --internal-ip | --links | --exposed-ports | --docker-args)
       FLAG="$1"
       shift
       ;;
@@ -60,6 +60,10 @@ get_exposed_ports() {
   [[ -f "$ROOT/EXPOSED_PORTS" ]] && tr '\n' ' ' <"$ROOT/EXPOSED_PORTS" || true
 }
 
+get_docker_args() {
+  [[ -f "$ROOT/DOCKER_ARGS" ]] && tr '\n' ' ' <"$ROOT/DOCKER_ARGS" || true
+}
+
 case "$FLAG" in
   --image)
     get_image
@@ -85,6 +89,10 @@ case "$FLAG" in
     get_exposed_ports
     echo ""
     ;;
+  --docker-args)
+    get_docker_args
+    echo ""
+    ;;
   "")
     echo "=====> $SERVICE generic service information"
     printf '       %-20s %s\n' "Image:" "$(get_image)"
@@ -95,5 +103,6 @@ case "$FLAG" in
     printf '       %-20s %s\n' "Container:" "$CONTAINER"
     printf '       %-20s %s\n' "Links:" "$(get_links)"
     printf '       %-20s %s\n' "Exposed ports:" "$(get_exposed_ports)"
+    printf '       %-20s %s\n' "Docker args:" "$(get_docker_args)"
     ;;
 esac

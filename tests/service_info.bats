@@ -62,3 +62,10 @@ teardown() {
   run dokku "$PLUGIN_COMMAND_PREFIX:info" missing
   assert_failure
 }
+
+@test "(generic:info --docker-args) prints docker args" {
+  dokku "$PLUGIN_COMMAND_PREFIX:create" testinfo redis:7-alpine --docker-arg=--memory=128m
+  run dokku "$PLUGIN_COMMAND_PREFIX:info" testinfo --docker-args
+  assert_success
+  assert_contains "$output" "--memory=128m"
+}
