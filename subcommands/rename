@@ -17,6 +17,7 @@ verify_service_name "$OLD" || dokku_log_fail "Invalid old name"
 verify_service_name "$NEW" || dokku_log_fail "Invalid new name"
 service_exists "$OLD" || dokku_log_fail "Service $OLD does not exist"
 service_exists "$NEW" && dokku_log_fail "Service $NEW already exists"
+acquire_service_lock "$OLD"
 
 OLD_ROOT="$(service_root "$OLD")"
 NEW_ROOT="$(service_root "$NEW")"
@@ -24,6 +25,38 @@ OLD_CONT="$(service_container_name "$OLD")"
 NEW_CONT="$(service_container_name "$NEW")"
 OLD_NET="$(service_network_name "$OLD")"
 NEW_NET="$(service_network_name "$NEW")"
+
+# Rollback: revert state moved to NEW_ROOT back to OLD_ROOT, drop volumes and
+# network we created under the new name. Anything past the "point of no return"
+# (old container removed, old volumes gone) leaves a recovery hint — full
+# reversal past that point requires the same volume-copy dance in reverse, which
+# would itself be a rename. Recovery hint is more honest than pretending we
+# can always undo.
+POINT_OF_NO_RETURN=0
+rollback_rename() {
+  local ec=$?
+  set +e
+  if [[ $POINT_OF_NO_RETURN -eq 0 ]]; then
+    dokku_log_warn "rename failed; rolling back to $OLD"
+    if [[ -d "$NEW_ROOT" && ! -d "$OLD_ROOT" ]]; then
+      mv "$NEW_ROOT" "$OLD_ROOT" 2>/dev/null || true
+    fi
+    while IFS= read -r vol; do
+      [[ -z "$vol" ]] && continue
+      "$DOCKER_BIN" volume rm "$vol" >/dev/null 2>&1 || true
+    done < <(list_service_volumes "$NEW")
+    "$DOCKER_BIN" network rm "$NEW_NET" >/dev/null 2>&1 || true
+    if [[ $WAS_RUNNING -eq 1 ]]; then
+      "$DOCKER_BIN" container start "$OLD_CONT" >/dev/null 2>&1 || true
+    fi
+  else
+    dokku_log_warn "rename failed AFTER point of no return"
+    dokku_log_warn "state is now under $NEW ($NEW_ROOT); old container/volumes already removed"
+    dokku_log_warn "recover: run 'dokku generic:start $NEW' and update linked apps manually if needed"
+  fi
+  exit "$ec"
+}
+trap rollback_rename ERR
 
 # Snapshot LINKS before any mutation
 OLD_LINKS=()
@@ -55,7 +88,9 @@ while IFS= read -r vol; do
   copy_volume_data "$vol" "$new_vol"
 done < <(list_service_volumes "$OLD")
 
-# 5. Tear down old container, ambassadors, network, old volumes
+# 5. Tear down old container, ambassadors, network, old volumes.
+# From here on, old resources are gone — rollback can only surface a recovery hint.
+POINT_OF_NO_RETURN=1
 "$DOCKER_BIN" container rm -f "$OLD_CONT" >/dev/null 2>&1 || true
 while IFS= read -r amb; do
   [[ -z "$amb" ]] && continue
@@ -140,4 +175,5 @@ for app in "${OLD_LINKS[@]}"; do
   unset UNSET_KEYS SET_PAIRS
 done
 
+trap - ERR
 dokku_log_info2 "Renamed $OLD -> $NEW"

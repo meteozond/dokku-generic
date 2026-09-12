@@ -15,6 +15,7 @@ SPEC="${2:-}"
 [[ -z "$SPEC" ]] && dokku_log_fail "Please specify HOST_PORT:CONTAINER_PORT"
 verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
 service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+acquire_service_lock "$SERVICE"
 
 ROOT="$(service_root "$SERVICE")"
 

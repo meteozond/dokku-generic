@@ -42,6 +42,7 @@ done
 [[ -z "$APP" ]] && dokku_log_fail "Please specify a valid app name"
 verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
 service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+acquire_service_lock "$SERVICE"
 
 if ! dokku apps:exists "$APP" >/dev/null 2>&1; then
   dokku_log_fail "App $APP does not exist (try: dokku apps:create $APP)"

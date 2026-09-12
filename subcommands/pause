@@ -11,6 +11,7 @@ SERVICE="${1:-}"
 [[ -z "$SERVICE" ]] && dokku_log_fail "Please specify a valid name for the service"
 verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
 service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+acquire_service_lock "$SERVICE"
 
 CONTAINER="$(service_container_name "$SERVICE")"
 status=$("$DOCKER_BIN" container inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || echo "")

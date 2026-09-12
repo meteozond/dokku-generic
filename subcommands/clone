@@ -49,6 +49,7 @@ verify_service_name "$SOURCE" || dokku_log_fail "Invalid source name"
 verify_service_name "$TARGET" || dokku_log_fail "Invalid target name"
 service_exists "$SOURCE" || dokku_log_fail "Source $SOURCE does not exist"
 service_exists "$TARGET" && dokku_log_fail "Target $TARGET already exists"
+acquire_service_lock "$SOURCE"
 
 SOURCE_ROOT="$(service_root "$SOURCE")"
 TARGET_ROOT="$(service_root "$TARGET")"
