@@ -378,10 +378,6 @@ docker exec -it dokku.generic.test bash               # enter the container
 
 The plugin source is mounted read-only at `/plugin-source` and copied to `/var/lib/dokku/plugins/available/generic` at startup.
 
-## Status
-
-**1.0.0** — first release. All 19 subcommands + 4 lifecycle hooks implemented; 66 unit + 127 integration tests pass. Full change log: [`CHANGELOG.md`](CHANGELOG.md).
-
 ## License
 
 MIT — see [LICENSE.txt](LICENSE.txt).
