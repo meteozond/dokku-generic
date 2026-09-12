@@ -7,6 +7,12 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-09-12
+
+### Fixed
+
+- `service_app-links.bats` test no longer relies on `dokku apps:create` exit status; on Dokku 0.38 the trailing nginx reload can exit nonzero ("No web listeners specified") while still creating the app. Verify via `apps:exists`.
+
 ## [1.1.1] - 2026-09-12
 
 ### Changed
@@ -131,7 +137,8 @@ Initial release.
 - Full `README.md` with quick-start, three MCP-server examples (Atlassian, filesystem, Postgres), command reference, environment overrides, differences from `dokku-redis`, development section.
 - `INSTALL.md` — installation without `dokku plugin:install <git>`: rsync, `scp -r`, `git archive`, `tar` pipe, `docker cp`; includes zsh/bash equivalents for excluding dotfiles.
 
-[Unreleased]: https://github.com/meteozond/dokku-generic/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/meteozond/dokku-generic/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/meteozond/dokku-generic/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/meteozond/dokku-generic/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/meteozond/dokku-generic/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/meteozond/dokku-generic/compare/v1.0.0...v1.0.1
