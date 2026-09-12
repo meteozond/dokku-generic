@@ -124,3 +124,24 @@ teardown() {
   after=$(docker container inspect -f '{{.State.StartedAt}}' dokku.generic.testset)
   [[ "$before" == "$after" ]] || flunk "container was restarted despite --no-restart (before=$before after=$after)"
 }
+
+@test "(generic:set) concurrent invocations serialize via lock" {
+  # Two concurrent sets — the second must wait for the first. If they raced
+  # they'd interleave restarts; with the lock, wall-clock is roughly 2x the
+  # single-call time and both succeed.
+  dokku "$PLUGIN_COMMAND_PREFIX:set" testset --env=FIRST=1 &
+  first_pid=$!
+  sleep 0.2
+  dokku "$PLUGIN_COMMAND_PREFIX:set" testset --env=SECOND=2 &
+  second_pid=$!
+  wait $first_pid
+  first_ec=$?
+  wait $second_pid
+  second_ec=$?
+  [[ $first_ec -eq 0 ]] || flunk "first set failed"
+  [[ $second_ec -eq 0 ]] || flunk "second set failed"
+  # Both env values should be present — neither trampled the other.
+  run cat "$PLUGIN_DATA_HOST_ROOT/testset/ENV"
+  assert_contains "$output" "FIRST=1"
+  assert_contains "$output" "SECOND=2"
+}
