@@ -146,3 +146,11 @@ teardown() {
   run docker exec dokku.generic.testcreate env
   assert_contains "$output" "REDIS_PASSWORD=sekret"
 }
+
+@test "(generic:create --expose) raises ambassador for exposed port" {
+  # Pick a high host port unlikely to collide
+  dokku "$PLUGIN_COMMAND_PREFIX:create" testcreate redis:7-alpine --expose 16379:6379
+  run docker container ls -aq --filter "label=dokku.ambassador.service=testcreate" --format '{{.Names}}'
+  assert_success
+  [[ -n "$output" ]] || flunk "expected an ambassador container, got none"
+}

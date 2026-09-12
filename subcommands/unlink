@@ -15,6 +15,7 @@ APP="${2:-}"
 [[ -z "$APP" ]] && dokku_log_fail "Please specify a valid app name"
 verify_service_name "$SERVICE" || dokku_log_fail "Invalid service name"
 service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
+acquire_service_lock "$SERVICE"
 
 ROOT="$(service_root "$SERVICE")"
 NETWORK="$(service_network_name "$SERVICE")"

@@ -208,6 +208,13 @@ fi
 
 cleanup_on_fail() {
   "$DOCKER_BIN" container rm -f "$CONTAINER" >/dev/null 2>&1 || true
+  # Tear down any ambassadors that got started before failure.
+  while IFS= read -r amb; do
+    [[ -z "$amb" ]] && continue
+    "$DOCKER_BIN" container rm -f "$amb" >/dev/null 2>&1 || true
+  done < <("$DOCKER_BIN" container ls -aq \
+    --filter "label=dokku.ambassador.service=$SERVICE" \
+    --format '{{.Names}}' 2>/dev/null)
   "$DOCKER_BIN" network rm "$NETWORK" >/dev/null 2>&1 || true
   rm -rf "$ROOT"
 }
@@ -243,6 +250,13 @@ done
   "${_DOCKER_CMD_ARGS[@]}" >/dev/null
 
 "$DOCKER_BIN" container inspect -f '{{.Id}}' "$CONTAINER" >"$ROOT/ID"
+
+# Raise ambassadors for any --expose ports the user recorded. Failures here still
+# hit the trap, so half-created state (container up, ambassador missing) rolls back.
+if [[ -s "$ROOT/EXPOSED_PORTS" ]]; then
+  service_ambassador_rebuild "$SERVICE"
+fi
+
 trap - ERR
 
 dokku_log_info2 "container created: $SERVICE"

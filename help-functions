@@ -48,7 +48,7 @@ EOF
 
 cmd_info_help() {
   cat <<EOF
-generic:info <service> [--image|--status|--port|--internal-ip|--links|--exposed-ports]
+generic:info <service> [--image|--status|--port|--internal-ip|--links|--exposed-ports|--docker-args]
 
 Show service information. Without flag prints all fields.
 EOF

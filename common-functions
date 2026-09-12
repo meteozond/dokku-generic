@@ -15,6 +15,25 @@ verify_service_name() {
   return 0
 }
 
+# Acquire an exclusive advisory lock on a per-service lock file, held for the rest
+# of the current shell (subcommand). Blocks up to PLUGIN_LOCK_TIMEOUT seconds
+# (default 60) before failing — this catches truly stuck locks without turning a
+# routine set / restart into an indefinite hang. The lock is released automatically
+# when the shell exits, so no explicit unlock is needed. Callers that need to run
+# without a service context (e.g. before the state dir exists) should skip this.
+acquire_service_lock() {
+  local service="$1"
+  local lock_dir="${PLUGIN_DATA_HOST_ROOT}/.locks"
+  local lock_file="$lock_dir/$service"
+  local timeout="${PLUGIN_LOCK_TIMEOUT:-60}"
+  mkdir -p "$lock_dir"
+  # Use fd 200 for the lock; kept open for the process lifetime.
+  exec 200>"$lock_file"
+  if ! flock -w "$timeout" 200; then
+    dokku_log_fail "Could not acquire lock for service $service within ${timeout}s (another operation in progress?)"
+  fi
+}
+
 env_escape() {
   local v="$1"
   v="${v//\\/\\\\}"

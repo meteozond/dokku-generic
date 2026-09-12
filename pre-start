@@ -16,6 +16,10 @@ while IFS= read -r service; do
   [[ -s "$links_file" ]] || continue
   if ! grep -qxF "$APP" "$links_file"; then continue; fi
 
+  # subcommands/start acquires its own lock — this pre-start hook fires from
+  # every concurrent deploy of a linked app, and without serialisation we get
+  # duplicate `docker container run` attempts. Doing the running-check inside
+  # start (after the lock) turns concurrent hooks into fast no-ops.
   if service_is_running "$service"; then continue; fi
 
   status=$("$DOCKER_BIN" container inspect -f '{{.State.Status}}' "$(service_container_name "$service")" 2>/dev/null || echo "")

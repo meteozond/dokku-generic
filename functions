@@ -237,6 +237,22 @@ service_ambassador_rebuild() {
 copy_volume_data() {
   local from_vol="$1" to_vol="$2"
   "$DOCKER_BIN" volume create "$to_vol" >/dev/null
+
+  # Warn on large volumes so the user knows a slow copy is not a hang. `du -sm`
+  # walks the whole tree — cheap for small volumes, and worth doing for the
+  # heads-up on big ones. Threshold is a soft warning; PLUGIN_COPY_VOLUME_WARN_MB
+  # lets ops silence or retune it.
+  local warn_mb size_mb
+  warn_mb="${PLUGIN_COPY_VOLUME_WARN_MB:-1024}"
+  # shellcheck disable=SC2016  # $1 is awk syntax, not shell — must stay unexpanded
+  size_mb=$("$DOCKER_BIN" container run --rm \
+    -v "$from_vol":/from:ro \
+    "$PLUGIN_BUSYBOX_IMAGE" \
+    sh -c 'du -sm /from 2>/dev/null | awk "{print \$1}"' 2>/dev/null || echo "0")
+  if [[ "$size_mb" =~ ^[0-9]+$ ]] && [[ "$size_mb" -ge "$warn_mb" ]]; then
+    dokku_log_warn "copying volume $from_vol → $to_vol (~${size_mb} MB); may take a while"
+  fi
+
   "$DOCKER_BIN" container run --rm \
     -v "$from_vol":/from:ro \
     -v "$to_vol":/to \

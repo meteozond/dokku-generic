@@ -7,6 +7,21 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-12
+
+### Added
+
+- Per-service advisory lock via `flock` for every mutating subcommand (`set`/`unset`/`destroy`/`start`/`stop`/`restart`/`pause`/`link`/`unlink`/`promote`/`expose`/`unexpose`/`clone`/`rename`). Blocks up to `PLUGIN_LOCK_TIMEOUT` seconds (default 60). Fixes racing pre-start hooks from concurrent app deploys and racing `generic:set` writes.
+- `generic:info --docker-args` — show recorded `--docker-arg` values.
+- `PLUGIN_COPY_VOLUME_WARN_MB` — threshold (MB) above which `copy_volume_data` prints a heads-up before starting a slow copy. Default 1024.
+
+### Changed
+
+- `generic:create --expose` now raises the ambassador as part of create (previously it only recorded the port; the ambassador stayed missing until an explicit `expose` call).
+- `subcommands/create` `cleanup_on_fail` trap also tears down any ambassador containers that got started before the failure.
+- `subcommands/rename` gains a rollback trap. Failures before the "point of no return" (old container/volumes removed) revert state to `OLD_ROOT`, drop new volumes and network, and restart the old container. Failures past that point surface a recovery hint instead of pretending we can undo.
+- CI integration matrix expanded to Dokku 0.35.20, 0.36.4, and 0.37.10.
+
 ## [1.0.1] - 2026-09-12
 
 ### Added
@@ -110,6 +125,7 @@ Initial release.
 - Full `README.md` with quick-start, three MCP-server examples (Atlassian, filesystem, Postgres), command reference, environment overrides, differences from `dokku-redis`, development section.
 - `INSTALL.md` — installation without `dokku plugin:install <git>`: rsync, `scp -r`, `git archive`, `tar` pipe, `docker cp`; includes zsh/bash equivalents for excluding dotfiles.
 
-[Unreleased]: https://github.com/meteozond/dokku-generic/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/meteozond/dokku-generic/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/meteozond/dokku-generic/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/meteozond/dokku-generic/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/meteozond/dokku-generic/releases/tag/v1.0.0
