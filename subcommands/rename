@@ -33,6 +33,12 @@ if [[ -f "$OLD_ROOT/LINKS" ]]; then
   done <"$OLD_ROOT/LINKS"
 fi
 
+# Snapshot pre-rename container status so a stopped service stays stopped after rename.
+WAS_RUNNING=0
+if [[ "$("$DOCKER_BIN" container inspect -f '{{.State.Running}}' "$OLD_CONT" 2>/dev/null)" == "true" ]]; then
+  WAS_RUNNING=1
+fi
+
 # 1. Stop old container gracefully
 "$DOCKER_BIN" container stop -t "$PLUGIN_STOP_TIMEOUT" "$OLD_CONT" >/dev/null 2>&1 || true
 
@@ -63,8 +69,10 @@ while IFS= read -r vol; do
   "$DOCKER_BIN" volume rm "$vol" >/dev/null 2>&1 || true
 done < <(list_service_volumes "$OLD")
 
-# 6. Start new container from moved state
-service_restart_internal "$NEW"
+# 6. Start new container from moved state (only if the source was running)
+if [[ $WAS_RUNNING -eq 1 ]]; then
+  service_restart_internal "$NEW"
+fi
 
 # 7. Rebuild ambassadors for new service (no-op if no EXPOSED_PORTS)
 service_ambassador_rebuild "$NEW"
@@ -72,6 +80,17 @@ service_ambassador_rebuild "$NEW"
 # 8. Update all linked apps: docker-options + config keys
 OLD_ALIAS="$(service_alias "$OLD")"
 NEW_ALIAS="$(service_alias "$NEW")"
+
+# Rewrite recorded aliases in state/APPS/* from OLD_ALIAS → NEW_ALIAS.
+if [[ -d "$NEW_ROOT/APPS" ]]; then
+  for f in "$NEW_ROOT/APPS"/*; do
+    [[ -f "$f" ]] || continue
+    cur=$(<"$f")
+    if [[ "$cur" == "$OLD_ALIAS" ]]; then
+      printf '%s\n' "$NEW_ALIAS" >"$f"
+    fi
+  done
+fi
 
 for app in "${OLD_LINKS[@]}"; do
   # Swap network docker-option
