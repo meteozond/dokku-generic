@@ -31,3 +31,11 @@ teardown() {
   lines=$(echo "$output" | wc -l)
   [[ "$lines" -le 2 ]]
 }
+
+@test "(generic:logs -f) follows logs until interrupted" {
+  # -f blocks by design; use `timeout` to cut it off. Exit 124 = timed out (expected).
+  run timeout 3 dokku "$PLUGIN_COMMAND_PREFIX:logs" testlogs -f
+  # Either the SIGTERM produced 124/143, or dokku wrapped it — accept a nonzero exit,
+  # but require content came through before the timeout hit.
+  assert_contains "$output" "Ready to accept connections"
+}

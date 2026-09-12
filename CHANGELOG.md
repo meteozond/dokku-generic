@@ -7,6 +7,21 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `generic:set --no-restart` — skip container recreation after config change.
+- `state/APPS/<app>` records the resolved alias at link time; `unlink` / `promote` / `rename` use it as the source of truth instead of scanning app config for values that reference the service's DNS name.
+
+### Changed
+
+- `generic:destroy` logs a verbose warning when a volume or network cannot be removed (e.g. still attached), so leftover state is visible instead of silent.
+- `generic:rename` preserves stopped state — if the source container was not running, the renamed service is not started (only when the service has no linked apps; a linked app's `ps:restart` re-triggers the pre-start hook).
+- `generic:rename` rewrites recorded aliases in `state/APPS/*` from the old service alias to the new one.
+
+### Fixed
+
+- Extracted `atomic_remove_line` helper (used in `unset`, `unlink`, `unexpose`, `destroy`) so line-removal is consistently atomic via `mktemp`+`mv`.
+
 ## [1.0.0] - 2026-09-12
 
 Initial release.

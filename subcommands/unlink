@@ -27,26 +27,32 @@ fi
 # Remove --network option from docker-options
 dokku docker-options:remove "$APP" build,deploy,run "--network=$NETWORK" 2>/dev/null || true
 
-# Remove config keys whose values reference the service container DNS name.
-# Strategy: list all config keys, check each value, unset if matches.
-DNS="$(service_container_name "$SERVICE")"
-
-# Use dokku config:export envfile format for stable parsing
+# Determine which config keys to unset.
 declare -a TO_UNSET=()
-while IFS='=' read -r key val; do
-  [[ -z "$key" ]] && continue
-  strip_envfile_quotes key val
-  if [[ "$val" == *"$DNS"* ]]; then
-    TO_UNSET+=("$key")
-  fi
-done < <(dokku config:export --format=envfile "$APP" 2>/dev/null || true)
+ALIAS_FILE="$ROOT/APPS/$APP"
+if [[ -f "$ALIAS_FILE" ]]; then
+  # New-style: alias is recorded — unset exactly PREFIX_HOST/PORT/URL + LINK_ENV keys.
+  ALIAS=$(<"$ALIAS_FILE")
+  for suffix in HOST PORT URL; do
+    TO_UNSET+=("${ALIAS}_${suffix}")
+  done
+else
+  # Legacy fallback: find keys whose value references the service DNS name.
+  DNS="$(service_container_name "$SERVICE")"
+  while IFS='=' read -r key val; do
+    [[ -z "$key" ]] && continue
+    strip_envfile_quotes key val
+    if [[ "$val" == *"$DNS"* ]]; then
+      TO_UNSET+=("$key")
+    fi
+  done < <(dokku config:export --format=envfile "$APP" 2>/dev/null || true)
+fi
 
-# Also pick up LINK_ENV keys (their values may not contain DNS but they were set by link)
+# LINK_ENV keys (may not reference DNS but were set by link).
 if [[ -f "$ROOT/LINK_ENV" ]]; then
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
     key="${line%%=*}"
-    # Add only if not already in TO_UNSET
     found=0
     for k in "${TO_UNSET[@]}"; do
       [[ "$k" == "$key" ]] && {
@@ -62,9 +68,7 @@ if [[ ${#TO_UNSET[@]} -gt 0 ]]; then
   dokku config:unset "$APP" "${TO_UNSET[@]}" >/dev/null 2>&1 || true
 fi
 
-# Remove app from LINKS file (atomic)
-tmp="$(mktemp "$ROOT/.links.XXXXXX")"
-grep -vxF "$APP" "$LINKS_FILE" >"$tmp" || true
-mv "$tmp" "$LINKS_FILE"
+atomic_remove_line "$LINKS_FILE" fixed "$APP"
+rm -f "$ALIAS_FILE"
 
 dokku_log_info2 "$PLUGIN_SERVICE service $SERVICE unlinked from $APP"

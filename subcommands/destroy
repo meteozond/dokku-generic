@@ -61,14 +61,26 @@ while IFS= read -r amb; do
   "$DOCKER_BIN" container rm -f "$amb" >/dev/null 2>&1 || true
 done < <("$DOCKER_BIN" container ls -aq --filter "label=dokku.ambassador.service=$SERVICE" --format '{{.Names}}' 2>/dev/null)
 
-# Remove named volumes belonging to this service
+# Remove named volumes belonging to this service. Failures (e.g. volume still in use by
+# another container) are logged verbosely — user needs to know so leftover state doesn't
+# quietly accumulate.
 # shellcheck disable=SC2063
 volumes=$("$DOCKER_BIN" volume ls --format '{{.Name}}' | grep "^${PLUGIN_VOLUME_PREFIX}\.${SERVICE}\(\$\|\.\)" || true)
 if [[ -n "$volumes" ]]; then
-  echo "$volumes" | xargs -r "$DOCKER_BIN" volume rm >/dev/null 2>&1 || true
+  while IFS= read -r vol; do
+    [[ -z "$vol" ]] && continue
+    if ! "$DOCKER_BIN" volume rm "$vol" >/dev/null 2>&1; then
+      dokku_log_warn "could not remove volume $vol (in use?); leftover — remove manually"
+    fi
+  done <<<"$volumes"
 fi
 
-"$DOCKER_BIN" network rm "$NETWORK" >/dev/null 2>&1 || true
+if ! "$DOCKER_BIN" network rm "$NETWORK" >/dev/null 2>&1; then
+  # network absence is expected and quiet; other failures (attached containers) get logged
+  if "$DOCKER_BIN" network inspect "$NETWORK" >/dev/null 2>&1; then
+    dokku_log_warn "could not remove network $NETWORK (attached containers?); leftover — remove manually"
+  fi
+fi
 
 rm -rf "$ROOT"
 

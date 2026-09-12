@@ -68,20 +68,11 @@ service_exists "$SERVICE" || dokku_log_fail "Service $SERVICE does not exist"
 
 ROOT="$(service_root "$SERVICE")"
 
-remove_line() {
-  local file="$1" pattern="$2"
-  [[ -f "$file" ]] || return 0
-  local tmp
-  tmp="$(mktemp "$(dirname "$file")/.unset.XXXXXX")"
-  grep -vxF -- "$pattern" "$file" >"$tmp" || true
-  mv "$tmp" "$file"
-}
-
 for k in "${UNSET_ENV[@]}"; do env_unset "$ROOT/ENV" "$k"; done
 for k in "${UNSET_LINK_ENV[@]}"; do env_unset "$ROOT/LINK_ENV" "$k"; done
-for spec in "${UNSET_MOUNT[@]}"; do remove_line "$ROOT/MOUNTS" "$spec"; done
-for arg in "${UNSET_DOCKER_ARG[@]}"; do remove_line "$ROOT/DOCKER_ARGS" "$arg"; done
-for ep in "${UNSET_EXPOSE[@]}"; do remove_line "$ROOT/EXPOSED_PORTS" "$ep"; done
+for spec in "${UNSET_MOUNT[@]}"; do atomic_remove_line "$ROOT/MOUNTS" fixed "$spec"; done
+for arg in "${UNSET_DOCKER_ARG[@]}"; do atomic_remove_line "$ROOT/DOCKER_ARGS" fixed "$arg"; done
+for ep in "${UNSET_EXPOSE[@]}"; do atomic_remove_line "$ROOT/EXPOSED_PORTS" fixed "$ep"; done
 
 dokku_log_info1 "Updated $SERVICE state"
 

@@ -54,3 +54,20 @@ teardown() {
   run dokku "$PLUGIN_COMMAND_PREFIX:rename" oldsvc newsvc
   assert_failure
 }
+
+@test "(generic:rename) preserves stopped state when no linked apps" {
+  # Unlink first — rename of a linked service triggers ps:restart on the app,
+  # which via pre-start hook auto-starts our service. Preservation only applies
+  # to unlinked services.
+  dokku "$PLUGIN_COMMAND_PREFIX:unlink" oldsvc testapp
+  dokku "$PLUGIN_COMMAND_PREFIX:stop" oldsvc
+
+  run dokku "$PLUGIN_COMMAND_PREFIX:rename" oldsvc newsvc
+  assert_success
+
+  if docker container inspect dokku.generic.newsvc >/dev/null 2>&1; then
+    running=$(docker container inspect -f '{{.State.Running}}' dokku.generic.newsvc)
+    [[ "$running" == "false" ]] || flunk "renamed service should not be running (got: $running)"
+  fi
+  # Container absent = clearly not running — pass.
+}

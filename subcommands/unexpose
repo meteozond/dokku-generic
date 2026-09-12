@@ -22,10 +22,7 @@ if [[ ! -f "$ROOT/EXPOSED_PORTS" ]] || ! grep -qxF "$SPEC" "$ROOT/EXPOSED_PORTS"
   dokku_log_fail "Port $SPEC is not exposed for $SERVICE"
 fi
 
-# Remove from EXPOSED_PORTS atomically
-tmp="$(mktemp "$ROOT/.expose.XXXXXX")"
-grep -vxF "$SPEC" "$ROOT/EXPOSED_PORTS" >"$tmp" || true
-mv "$tmp" "$ROOT/EXPOSED_PORTS"
+atomic_remove_line "$ROOT/EXPOSED_PORTS" fixed "$SPEC"
 
 service_ambassador_rebuild "$SERVICE"
 

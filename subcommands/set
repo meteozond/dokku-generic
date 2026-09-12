@@ -11,6 +11,7 @@ shift
 SERVICE=""
 declare -a TO_SET_ENV=() TO_SET_LINK_ENV=() TO_ADD_MOUNT=() TO_ADD_DOCKER_ARG=()
 NEW_IMAGE="" NEW_PORT="" NEW_SCHEME="" NEW_CMD="" NEW_ENTRYPOINT=""
+NO_RESTART=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -86,6 +87,10 @@ while [[ $# -gt 0 ]]; do
       TO_ADD_DOCKER_ARG+=("${1#--docker-arg=}")
       shift
       ;;
+    --no-restart)
+      NO_RESTART=1
+      shift
+      ;;
     -*) dokku_log_fail "Unknown flag: $1" ;;
     *)
       [[ -n "$SERVICE" ]] && dokku_log_fail "Unexpected: $1"
@@ -140,8 +145,10 @@ done
 
 dokku_log_info1 "Updated $SERVICE state"
 
-# Restart if running
-if service_is_running "$SERVICE"; then
+# Restart if running (unless --no-restart was passed)
+if [[ $NO_RESTART -eq 1 ]]; then
+  dokku_log_info1 "Skipping restart (--no-restart)"
+elif service_is_running "$SERVICE"; then
   dokku_log_info1 "Restarting service to apply changes"
   service_restart_internal "$SERVICE"
 fi
