@@ -345,11 +345,6 @@ setup() {
   assert_output "dokku.generic.myservice"
 }
 
-@test "service_default_volume_name returns dokku.generic.<svc>" {
-  run service_default_volume_name "myservice"
-  assert_output "dokku.generic.myservice"
-}
-
 @test "build_run_args includes -e flags from ENV" {
   local tmp
   tmp=$(mktemp -d)

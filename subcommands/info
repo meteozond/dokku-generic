@@ -69,7 +69,10 @@ case "$FLAG" in
     get_status
     echo ""
     ;;
-  --port) get_port ;;
+  --port)
+    get_port
+    echo ""
+    ;;
   --internal-ip)
     get_internal_ip
     echo ""

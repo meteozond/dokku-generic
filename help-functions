@@ -10,10 +10,10 @@ Create a new generic service from a Docker image.
 Flags:
   --port N                Port inside container (for link/expose)
   --scheme STR            URL scheme for <PREFIX>_URL (default: tcp)
-  --env KEY=VAL           Container env var (repeatable)
-  --link-env KEY=VAL      Extra env injected into linked apps (repeatable)
+  --env KEY=VAL           Container env var (repeatable; KEY must match ^[A-Z_][A-Z0-9_]*\$)
+  --link-env KEY=VAL      Extra env injected into linked apps (repeatable; same KEY regex)
   --mount SPEC            Mount: /container/path | /host:/container | name:/container[:ro|:rw]
-  --expose H:C            Expose port to host immediately (repeatable; needs Plan 5)
+  --expose H:C            Expose port to host immediately via ambassador (repeatable)
   --cmd "..."             CMD-override (placed after image)
   --entrypoint /bin/x     Entrypoint-override
   --docker-arg ARG        Extra arg to docker run (repeatable)
@@ -68,6 +68,8 @@ generic:set <service> <flags>
 
 Update service configuration. Same flags as create (except --no-start).
 Restarts container automatically if running.
+--mount specs are deduplicated (identical spec is not appended twice).
+--env / --link-env keys must match ^[A-Z_][A-Z0-9_]*\$ (uppercase, digits, underscore).
 EOF
 }
 

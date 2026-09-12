@@ -95,3 +95,22 @@ teardown() {
   run cat "$PLUGIN_DATA_HOST_ROOT/testset/PORT"
   assert_output "6379"
 }
+
+@test "(generic:set --env) rejects malformed pair without =" {
+  run dokku "$PLUGIN_COMMAND_PREFIX:set" testset --env NOEQUALS
+  assert_failure
+  assert_contains "$output" "Invalid --env"
+}
+
+@test "(generic:set --env) rejects lowercase key" {
+  run dokku "$PLUGIN_COMMAND_PREFIX:set" testset --env docker_host=foo
+  assert_failure
+  assert_contains "$output" "Invalid --env key"
+}
+
+@test "(generic:set --mount) deduplicates repeated spec" {
+  dokku "$PLUGIN_COMMAND_PREFIX:set" testset --mount /data
+  dokku "$PLUGIN_COMMAND_PREFIX:set" testset --mount /data
+  count=$(grep -cxF "/data" "$PLUGIN_DATA_HOST_ROOT/testset/MOUNTS")
+  [[ "$count" -eq 1 ]] || flunk "expected one /data entry, got $count"
+}

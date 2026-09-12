@@ -149,8 +149,16 @@ service_network_name() {
   printf '%s.%s' "$PLUGIN_NETWORK_PREFIX" "$1"
 }
 
-service_default_volume_name() {
-  printf '%s.%s' "$PLUGIN_VOLUME_PREFIX" "$1"
+# Strips leading `export ` and surrounding double-quotes from a KEY / VALUE
+# token pair read from `dokku config:export --format=envfile`.
+# Usage: read_envfile_line KEY_VAR VAL_VAR < line
+# (both variables are populated in-place).
+strip_envfile_quotes() {
+  local -n _key="$1"
+  local -n _val="$2"
+  _key="${_key#export }"
+  _val="${_val#\"}"
+  _val="${_val%\"}"
 }
 
 # When Dokku core is available, prefer its loggers; otherwise fallback.

@@ -7,6 +7,7 @@ help:
 	@echo "  shfmt              - formatting check (2-space indent, ci)"
 	@echo "  bashate            - style linter (line length, whitespace, keyword layout)"
 	@echo "  unit-tests         - run bats tests/unit_*.bats"
+	@echo "  setup-dokku        - boot dokku/dokku in Docker (harness for integration)"
 	@echo "  integration-tests  - bring up Dokku in Docker, run bats tests"
 	@echo "  test               - lint + unit-tests + integration-tests"
 	@echo "  act-lint           - run lint job through act"

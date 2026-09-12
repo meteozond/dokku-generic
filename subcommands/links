@@ -7,6 +7,9 @@ source "$PLUGIN_BASE_PATH/common-functions"
 shift
 APP="${1:-}"
 [[ -z "$APP" ]] && dokku_log_fail "Please specify an app"
+if ! dokku apps:exists "$APP" >/dev/null 2>&1; then
+  dokku_log_fail "App $APP does not exist"
+fi
 
 found=0
 while IFS= read -r service; do

@@ -35,11 +35,7 @@ DNS="$(service_container_name "$SERVICE")"
 declare -a TO_UNSET=()
 while IFS='=' read -r key val; do
   [[ -z "$key" ]] && continue
-  # Strip leading "export " if present
-  key="${key#export }"
-  # Strip surrounding quotes from value
-  val="${val#\'}"
-  val="${val%\'}"
+  strip_envfile_quotes key val
   if [[ "$val" == *"$DNS"* ]]; then
     TO_UNSET+=("$key")
   fi

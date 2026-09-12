@@ -89,9 +89,7 @@ for app in "${OLD_LINKS[@]}"; do
 
   while IFS='=' read -r k v; do
     [[ -z "$k" ]] && continue
-    k="${k#export }"
-    v="${v#\"}"
-    v="${v%\"}"
+    strip_envfile_quotes k v
 
     case "$k" in
       "${OLD_ALIAS}_HOST" | "${OLD_ALIAS}_PORT" | "${OLD_ALIAS}_URL")

@@ -22,9 +22,7 @@ DNS="$(service_container_name "$SERVICE")"
 declare -A APP_CONFIG=()
 while IFS='=' read -r key val; do
   [[ -z "$key" ]] && continue
-  key="${key#export }"
-  val="${val#\'}"
-  val="${val%\'}"
+  strip_envfile_quotes key val
   APP_CONFIG["$key"]="$val"
 done < <(dokku config:export --format=envfile "$APP" 2>/dev/null || true)
 
@@ -55,16 +53,9 @@ if [[ -z "$OUR_PREFIX" ]]; then
   dokku_log_fail "Could not determine alias prefix for $SERVICE in $APP"
 fi
 
-# Derive the root prefix by stripping trailing digits
-# e.g. PG2 → PG, PG → PG, DATABASE3 → DATABASE
-ROOT_PREFIX="${OUR_PREFIX%%[0-9]*}"
-# If OUR_PREFIX has no trailing digits, strip trailing digits differently
-# Actually: remove all trailing digits from OUR_PREFIX
+# Derive the root prefix by stripping trailing digits (PG2 → PG, DATABASE3 → DATABASE).
 ROOT_PREFIX="$(printf '%s' "$OUR_PREFIX" | sed 's/[0-9]*$//')"
-
-if [[ -z "$ROOT_PREFIX" ]]; then
-  ROOT_PREFIX="$OUR_PREFIX"
-fi
+[[ -z "$ROOT_PREFIX" ]] && ROOT_PREFIX="$OUR_PREFIX"
 
 # If we are already the primary (OUR_PREFIX == ROOT_PREFIX and ROOT_PREFIX_HOST == DNS)
 if [[ "$OUR_PREFIX" == "$ROOT_PREFIX" ]]; then
@@ -96,21 +87,10 @@ if [[ -z "$PRIMARY_HOST_VAL" ]]; then
   exit 0
 fi
 
-# Find a free alternative slot for the current primary service
-ALT_ALIAS="$(service_alternative_alias "$APP" "$ROOT_PREFIX")"
-
-# Temporarily clear ROOT_PREFIX_URL so service_alternative_alias can find a free slot
-# Actually service_alternative_alias checks if ROOT_PREFIX_URL is free — it isn't (occupied by
-# current primary). We need ALT for the OTHER service — so after we clear ROOT_PREFIX_* and
-# set our keys there, the other service needs a home. Find the next free slot AFTER ROOT_PREFIX.
-# service_alternative_alias returns ROOT_PREFIX if _URL is free, otherwise ROOT_PREFIX2, etc.
-# Since ROOT_PREFIX_URL is set, it will return ROOT_PREFIX2 (or higher). But OUR_PREFIX might
-# be ROOT_PREFIX2 already — we need to be careful.
-
-# The ALT slot must not be OUR_PREFIX (we're vacating that).
-# service_alternative_alias looks at APP_CONFIG live — OUR_PREFIX_URL is currently set.
-# We want the first slot that is NOT ROOT_PREFIX and NOT occupied by someone else.
-# Simple approach: iterate manually to find a free slot excluding OUR_PREFIX.
+# Find a slot for the current primary service to move into. The slot may be OUR_PREFIX
+# (we're vacating that as we take ROOT_PREFIX_*), otherwise the first free ROOT_PREFIX<N>.
+# service_alternative_alias would return ROOT_PREFIX2/3/... but has no notion of "vacating",
+# so iterate manually.
 i=2
 while :; do
   candidate="${ROOT_PREFIX}${i}"

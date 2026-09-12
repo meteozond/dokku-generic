@@ -124,9 +124,12 @@ for pair in "${TO_SET_LINK_ENV[@]}"; do
   env_set "$ROOT/LINK_ENV" "$key" "$val"
 done
 
-# Append mounts
+# Append mounts (skip duplicates already present in MOUNTS)
 for spec in "${TO_ADD_MOUNT[@]}"; do
   parse_mount_spec "$spec" >/dev/null || dokku_log_fail "Invalid --mount: $spec"
+  if [[ -f "$ROOT/MOUNTS" ]] && grep -qxF "$spec" "$ROOT/MOUNTS"; then
+    continue
+  fi
   printf '%s\n' "$spec" >>"$ROOT/MOUNTS"
 done
 
