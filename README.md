@@ -28,7 +28,7 @@ Run any Docker image as a Dokku-managed service — env vars, volumes, port expo
 sudo dokku plugin:install https://github.com/meteozond/dokku-generic.git generic
 ```
 
-For installation **without git** (rsync/scp/tarball/`docker cp`), see [docs/install-without-git.md](docs/install-without-git.md).
+For installation **without git** (rsync/scp/tarball/`docker cp`), see [INSTALL.md](INSTALL.md).
 
 ## Quick start
 
@@ -381,13 +381,6 @@ The plugin source is mounted read-only at `/plugin-source` and copied to `/var/l
 ## Status
 
 **1.0.0** — first release. All 19 subcommands + 4 lifecycle hooks implemented; 66 unit + 127 integration tests pass. Full change log: [`CHANGELOG.md`](CHANGELOG.md).
-
-Spec: [`docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md).
-Implementation plans: [`docs/superpowers/plans/`](docs/superpowers/plans/).
-
-## Known issues / backlog
-
-See [`docs/superpowers/notes/known-issues.md`](docs/superpowers/notes/known-issues.md) for tracked minor issues, edge cases and refactor candidates.
 
 ## License
 

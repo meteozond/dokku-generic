@@ -91,10 +91,7 @@ Initial release.
 ### Documentation
 
 - Full `README.md` with quick-start, three MCP-server examples (Atlassian, filesystem, Postgres), command reference, environment overrides, differences from `dokku-redis`, development section.
-- `docs/install-without-git.md` — installation without `dokku plugin:install <git>`: rsync, `scp -r`, `git archive`, `tar` pipe, `docker cp`; includes zsh/bash equivalents for excluding dotfiles.
-- `docs/superpowers/specs/2026-05-06-dokku-generic-plugin-design.md` — design spec with C4 diagrams.
-- `docs/superpowers/plans/*` — implementation plans (Plans 1–8).
-- `docs/superpowers/notes/known-issues.md` — backlog of minor cleanups and refactor candidates.
+- `INSTALL.md` — installation without `dokku plugin:install <git>`: rsync, `scp -r`, `git archive`, `tar` pipe, `docker cp`; includes zsh/bash equivalents for excluding dotfiles.
 
 [Unreleased]: https://github.com/meteozond/dokku-generic/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/meteozond/dokku-generic/releases/tag/v1.0.0
