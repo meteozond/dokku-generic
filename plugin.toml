@@ -1,5 +1,5 @@
 [plugin]
 description = "Universal Dokku plugin for any Docker image"
-version = "1.0.0"
+version = "1.0.1"
 
 [plugin.config]

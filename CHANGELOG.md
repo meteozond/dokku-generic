@@ -7,6 +7,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-12
+
 ### Added
 
 - `generic:set --no-restart` — skip container recreation after config change.
@@ -108,5 +110,6 @@ Initial release.
 - Full `README.md` with quick-start, three MCP-server examples (Atlassian, filesystem, Postgres), command reference, environment overrides, differences from `dokku-redis`, development section.
 - `INSTALL.md` — installation without `dokku plugin:install <git>`: rsync, `scp -r`, `git archive`, `tar` pipe, `docker cp`; includes zsh/bash equivalents for excluding dotfiles.
 
-[Unreleased]: https://github.com/meteozond/dokku-generic/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/meteozond/dokku-generic/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/meteozond/dokku-generic/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/meteozond/dokku-generic/releases/tag/v1.0.0
