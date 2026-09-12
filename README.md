@@ -380,7 +380,7 @@ The plugin source is mounted read-only at `/plugin-source` and copied to `/var/l
 
 ## Status
 
-In development. All 19 subcommands + 4 lifecycle hooks implemented and tested. Tagged-release workflow not yet wired (no `v0.1.0` published yet).
+**1.0.0** — first release. All 19 subcommands + 4 lifecycle hooks implemented; 66 unit + 127 integration tests pass. Full change log: [`CHANGELOG.md`](CHANGELOG.md).
 
 Spec: [`docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md`](docs/superpowers/specs/2026-05-06-dokku.generic.plugin-design.md).
 Implementation plans: [`docs/superpowers/plans/`](docs/superpowers/plans/).
