@@ -48,6 +48,16 @@ setup() {
   assert_success
 }
 
+@test "verify_service_name accepts single letter" {
+  run verify_service_name "Z"
+  assert_success
+}
+
+@test "verify_service_name rejects leading underscore" {
+  run verify_service_name "_underscore"
+  assert_failure
+}
+
 @test "env_escape escapes backslash" {
   run env_escape 'a\b'
   assert_output 'a\\b'

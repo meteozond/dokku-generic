@@ -62,9 +62,6 @@ if [[ ${#TO_UNSET[@]} -gt 0 ]]; then
   dokku config:unset "$APP" "${TO_UNSET[@]}" >/dev/null 2>&1 || true
 fi
 
-# Remove app from LINKS file (atomic)
-tmp="$(mktemp "$ROOT/.links.XXXXXX")"
-grep -vxF "$APP" "$LINKS_FILE" >"$tmp" || true
-mv "$tmp" "$LINKS_FILE"
+atomic_remove_line "$LINKS_FILE" fixed "$APP"
 
 dokku_log_info2 "$PLUGIN_SERVICE service $SERVICE unlinked from $APP"

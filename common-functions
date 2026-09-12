@@ -27,6 +27,23 @@ env_unescape() {
   printf '%b' "$1"
 }
 
+# Remove lines matching a fixed string (whole-line) or a regex (BRE, anchored) from a file,
+# writing atomically via a same-dir tempfile + rename. No-op if file is absent.
+#   atomic_remove_line <file> <mode> <pattern>
+#   mode: "fixed" (grep -F -x, whole line) or "regex" (grep, BRE)
+atomic_remove_line() {
+  local file="$1" mode="$2" pattern="$3"
+  [[ -f "$file" ]] || return 0
+  local tmp
+  tmp="$(mktemp "$(dirname "$file")/.atomic.XXXXXX")"
+  if [[ "$mode" == "fixed" ]]; then
+    grep -vxF -- "$pattern" "$file" >"$tmp" || true
+  else
+    grep -v -- "$pattern" "$file" >"$tmp" || true
+  fi
+  mv "$tmp" "$file"
+}
+
 env_set() {
   local file="$1" key="$2" value="$3"
   local dir
@@ -51,14 +68,7 @@ env_get() {
 }
 
 env_unset() {
-  local file="$1" key="$2"
-  [[ -f "$file" ]] || return 0
-  local dir
-  dir="$(dirname "$file")"
-  local tmp
-  tmp="$(mktemp "$dir/.env.XXXXXX")"
-  grep -v "^${key}=" "$file" >"$tmp" || true
-  mv "$tmp" "$file"
+  atomic_remove_line "$1" regex "^${2}="
 }
 
 env_list() {
