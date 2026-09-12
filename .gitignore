@@ -4,3 +4,4 @@ node_modules/
 *.log
 test-results/
 .DS_Store
+.claude/
