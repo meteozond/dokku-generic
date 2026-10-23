@@ -150,7 +150,6 @@ teardown() {
 
 @test "(generic:link) on a linked app migrates legacy options, then fails" {
   dokku "$PLUGIN_COMMAND_PREFIX:link" testpg testapp
-  dokku network:set testapp attach-post-create
   dokku docker-options:add testapp deploy "--network=dokku.generic.testpg"
   run dokku "$PLUGIN_COMMAND_PREFIX:link" testpg testapp
   assert_failure

@@ -7,6 +7,14 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-10-24
+
+### Fixed
+
+- Dokku reports `attach-post-create` comma-separated; the network helpers now split on commas, so removing one network from a list works.
+- `link` on an already linked app no longer dies silently while migrating (a `head` closing the pipe killed it before "Already linked"). The empty `attach-post-create` unset no longer shows Dokku's `sed` noise.
+- Tests: removed an empty `network:set` that fails on Dokku 0.38.
+
 ## [1.1.4] - 2026-10-23
 
 ### Fixed

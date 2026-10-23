@@ -58,7 +58,7 @@ if grep -qxF "$APP" "$LINKS_FILE" 2>/dev/null; then
   MIGRATED="$({
     app_drop_legacy_network_option "$APP" "$NETWORK"
     app_attach_network add "$APP" "$NETWORK"
-  } | head -n1)"
+  })"
   if [[ -n "$MIGRATED" ]]; then
     dokku_log_info2 "network $NETWORK attached via network:set (changed); rebuild $APP to apply: dokku ps:rebuild $APP"
   fi

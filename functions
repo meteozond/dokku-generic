@@ -267,8 +267,9 @@ list_service_volumes() {
 }
 
 # Space-separated attach-post-create networks of an app (app-level value only).
+# Dokku stores and reports the list comma-separated.
 app_attach_networks() {
-  dokku network:report "$1" --network-attach-post-create 2>/dev/null | tr -s ' \t' ' ' | sed 's/^ //; s/ $//'
+  dokku network:report "$1" --network-attach-post-create 2>/dev/null | tr -s ' ,\t' ' ' | sed 's/^ //; s/ $//'
 }
 
 # Adds or removes one network in the app's attach-post-create list, keeping the
@@ -276,9 +277,9 @@ app_attach_networks() {
 # Usage: app_attach_network add|remove <app> <network>
 app_attach_network() {
   local action="$1" app="$2" network="$3" n found=0
-  local -a cur=() new=()
-  read -r -a cur <<<"$(app_attach_networks "$app")"
-  for n in ${cur[@]+"${cur[@]}"}; do
+  local -a have=() new=()
+  read -r -a have <<<"$(app_attach_networks "$app")"
+  for n in ${have[@]+"${have[@]}"}; do
     if [[ "$n" == "$network" ]]; then
       found=1
       [[ "$action" == remove ]] && continue
@@ -291,7 +292,12 @@ app_attach_network() {
   else
     [[ $found -eq 0 ]] && return 0
   fi
-  dokku network:set "$app" attach-post-create ${new[@]+"${new[@]}"} >/dev/null
+  if [[ ${#new[@]} -eq 0 ]]; then
+    # Dokku's unset prints a harmless "sed: no previous regular expression"
+    dokku network:set "$app" attach-post-create >/dev/null 2>&1
+  else
+    dokku network:set "$app" attach-post-create "${new[@]}" >/dev/null
+  fi
   echo changed
 }
 
