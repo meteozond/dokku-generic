@@ -7,6 +7,12 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-10-24
+
+### Fixed
+
+- Legacy `--network=` removal no longer pipes `docker-options:report` into `grep -q`. Under `pipefail` the early exit of `grep` made the check fail, so on Dokku 0.35 to 0.37 the option stayed in the build and deploy phases.
+
 ## [1.1.5] - 2026-10-24
 
 ### Fixed

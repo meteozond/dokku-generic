@@ -304,9 +304,11 @@ app_attach_network() {
 # Removes a legacy "--network=<network>" docker option from build, deploy and
 # run (set by dokku-generic up to 1.1.3). Prints "changed" if one was there.
 app_drop_legacy_network_option() {
-  local app="$1" network="$2" phase
+  local app="$1" network="$2" phase opts
   for phase in build deploy run; do
-    if dokku docker-options:report "$app" "--docker-options-$phase" 2>/dev/null | grep -qF -- "--network=$network"; then
+    # Capture first: "report | grep -q" gets SIGPIPE and fails under pipefail.
+    opts="$(dokku docker-options:report "$app" "--docker-options-$phase" 2>/dev/null || true)"
+    if [[ "$opts" == *"--network=$network"* ]]; then
       dokku docker-options:remove "$app" "$phase" "--network=$network" >/dev/null 2>&1 || true
       echo changed
     fi
