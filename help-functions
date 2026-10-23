@@ -149,7 +149,8 @@ cmd_link_help() {
   cat <<EOF
 generic:link <service> <app> [--alias PREFIX]
 
-Link service to app: adds --network to docker-options and sets <PREFIX>_HOST/PORT/URL
+Link service to app: attaches the app to the service network (network:set attach-post-create,
+next deploy or rebuild) and sets <PREFIX>_HOST/PORT/URL
 plus LINK_ENV vars in app config. App restarts via dokku config:set.
 EOF
 }
@@ -158,7 +159,7 @@ cmd_unlink_help() {
   cat <<EOF
 generic:unlink <service> <app>
 
-Disconnect service from app: removes --network from docker-options and unsets
+Disconnect service from app: detaches the service network (attach-post-create) and unsets
 all related config keys (those referencing the service DNS name + LINK_ENV vars).
 EOF
 }

@@ -296,7 +296,7 @@ In the app, your code reads these env vars to connect:
 redis.from_url(os.environ["CACHE_URL"], password=os.environ["CACHE_PASSWORD"])
 ```
 
-The app container is also placed on the service's Docker network (via `dokku docker-options:add ... --network=dokku.generic.<svc>`), so the DNS name actually resolves at runtime.
+The app container is also placed on the service's Docker network (via `dokku network:set <app> attach-post-create ... dokku.generic.<svc>`, in addition to its default network), so the DNS name actually resolves at runtime. The attachment applies on the next deploy or rebuild (`dokku ps:rebuild <app>`).
 
 ### Exposing ports
 
@@ -349,7 +349,7 @@ echo 'export PLUGIN_AMBASSADOR_IMAGE=registry.internal/ambassador:1.0' >> /home/
 | `link` URL | `REDIS_URL=redis://...` (fixed) | `<PREFIX>_HOST/PORT/URL` (auto-prefix from service name) + custom `LINK_ENV` |
 | Backup/import/export | Yes (Redis dump) | No (out of scope; use `docker run --rm -v <vol>:/data busybox tar -czf - /data > backup.tar.gz`) |
 | Network model | Single `dokku.network` for all redises | Per-service network `dokku.generic.<svc>` (better isolation) |
-| Linking mechanism | Legacy `--link` | `--network=dokku.generic.<svc>` via `docker-options` |
+| Linking mechanism | Legacy `--link` | `network:set attach-post-create dokku.generic.<svc>` |
 | Exposing | One ambassador for all ports | One ambassador **per port** (independent lifecycle) |
 | Whitespace in args | N/A | `--docker-arg`/`--cmd` preserve whitespace via bash arrays |
 

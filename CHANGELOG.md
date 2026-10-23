@@ -7,6 +7,14 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-10-23
+
+### Fixed
+
+- `link` no longer adds `--network=dokku.generic.<svc>` to docker-options. That option replaced the default bridge network, so Dokku found no container IP and nginx answered `return 502`. The app is now attached with `dokku network:set <app> attach-post-create <networks>`, in addition to its default network, keeping other networks already in the list. It applies on the next deploy or rebuild (`dokku ps:rebuild <app>`).
+- Migration for apps linked by 1.1.3 and earlier: `link` (also on an already linked app, before it reports "Already linked"), `unlink` and `rename` remove legacy `--network=` docker-options from build, deploy and run.
+- `unlink` and `rename` remove or swap only their own service network in `attach-post-create`.
+
 ## [1.1.3] - 2026-10-23
 
 ### Fixed

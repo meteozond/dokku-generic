@@ -25,8 +25,10 @@ if ! grep -qxF "$APP" "$LINKS_FILE" 2>/dev/null; then
   dokku_log_fail "Service $SERVICE is not linked to $APP"
 fi
 
-# Remove --network option from docker-options
-dokku docker-options:remove "$APP" build,deploy,run "--network=$NETWORK" 2>/dev/null || true
+# Detach the service network; also drop the legacy --network docker option
+# (set by <= 1.1.3). Takes effect on the next deploy or rebuild.
+app_attach_network remove "$APP" "$NETWORK" >/dev/null
+app_drop_legacy_network_option "$APP" "$NETWORK" >/dev/null
 
 # Determine which config keys to unset.
 declare -a TO_UNSET=()

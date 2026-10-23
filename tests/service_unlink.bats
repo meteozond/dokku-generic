@@ -26,16 +26,18 @@ teardown() {
 
   run dokku docker-options:report testapp
   assert_not_contains "$output" "--network=dokku.generic.testpg"
+  run dokku network:report testapp --network-attach-post-create
+  assert_not_contains "$output" "dokku.generic.testpg"
 
   run dokku config:get testapp TESTPG_URL
   assert_output ""
 }
 
-@test "(generic:unlink) removes a legacy build-phase network option" {
-  dokku docker-options:add testapp build "--network=dokku.generic.testpg"
+@test "(generic:unlink) removes legacy network docker-options" {
+  dokku docker-options:add testapp build,deploy,run "--network=dokku.generic.testpg"
   run dokku "$PLUGIN_COMMAND_PREFIX:unlink" testpg testapp
   assert_success
-  run dokku docker-options:report testapp --docker-options-build
+  run dokku docker-options:report testapp
   assert_not_contains "$output" "--network=dokku.generic.testpg"
 }
 

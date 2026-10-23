@@ -265,3 +265,44 @@ list_service_volumes() {
   local service="$1"
   "$DOCKER_BIN" volume ls --format '{{.Name}}' | grep -E "^${PLUGIN_VOLUME_PREFIX//./\\.}\.${service}(\.|$)" || true
 }
+
+# Space-separated attach-post-create networks of an app (app-level value only).
+app_attach_networks() {
+  dokku network:report "$1" --network-attach-post-create 2>/dev/null | tr -s ' \t' ' ' | sed 's/^ //; s/ $//'
+}
+
+# Adds or removes one network in the app's attach-post-create list, keeping the
+# other networks. Prints "changed" when the list was rewritten.
+# Usage: app_attach_network add|remove <app> <network>
+app_attach_network() {
+  local action="$1" app="$2" network="$3" n found=0
+  local -a cur=() new=()
+  read -r -a cur <<<"$(app_attach_networks "$app")"
+  for n in ${cur[@]+"${cur[@]}"}; do
+    if [[ "$n" == "$network" ]]; then
+      found=1
+      [[ "$action" == remove ]] && continue
+    fi
+    new+=("$n")
+  done
+  if [[ "$action" == add ]]; then
+    [[ $found -eq 1 ]] && return 0
+    new+=("$network")
+  else
+    [[ $found -eq 0 ]] && return 0
+  fi
+  dokku network:set "$app" attach-post-create ${new[@]+"${new[@]}"} >/dev/null
+  echo changed
+}
+
+# Removes a legacy "--network=<network>" docker option from build, deploy and
+# run (set by dokku-generic up to 1.1.3). Prints "changed" if one was there.
+app_drop_legacy_network_option() {
+  local app="$1" network="$2" phase
+  for phase in build deploy run; do
+    if dokku docker-options:report "$app" "--docker-options-$phase" 2>/dev/null | grep -qF -- "--network=$network"; then
+      dokku docker-options:remove "$app" "$phase" "--network=$network" >/dev/null 2>&1 || true
+      echo changed
+    fi
+  done
+}

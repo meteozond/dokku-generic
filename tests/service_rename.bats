@@ -34,15 +34,13 @@ teardown() {
   assert_output "data"
 }
 
-@test "(generic:rename) updates docker-options of linked apps" {
+@test "(generic:rename) swaps the attached network of linked apps" {
   dokku "$PLUGIN_COMMAND_PREFIX:rename" oldsvc newsvc
+  run dokku network:report testapp --network-attach-post-create
+  assert_contains "$output" "dokku.generic.newsvc"
+  assert_not_contains "$output" "dokku.generic.oldsvc"
   run dokku docker-options:report testapp
-  assert_contains "$output" "--network=dokku.generic.newsvc"
-  assert_not_contains "$output" "--network=dokku.generic.oldsvc"
-  run dokku docker-options:report testapp --docker-options-build
   assert_not_contains "$output" "--network=dokku.generic"
-  run dokku docker-options:report testapp --docker-options-deploy
-  assert_contains "$output" "--network=dokku.generic.newsvc"
 }
 
 @test "(generic:rename) updates link config vars" {
