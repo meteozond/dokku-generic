@@ -32,6 +32,14 @@ teardown() {
   run dokku docker-options:report testapp
   assert_contains "$output" "--network=dokku.generic.testpg"
 
+  # network is in deploy and run only: buildkit rejects it at build time
+  run dokku docker-options:report testapp --docker-options-build
+  assert_not_contains "$output" "--network=dokku.generic.testpg"
+  run dokku docker-options:report testapp --docker-options-deploy
+  assert_contains "$output" "--network=dokku.generic.testpg"
+  run dokku docker-options:report testapp --docker-options-run
+  assert_contains "$output" "--network=dokku.generic.testpg"
+
   # config has TESTPG_URL/HOST/PORT
   run dokku config:get testapp TESTPG_URL
   assert_output "redis://dokku.generic.testpg:6379"
@@ -105,4 +113,11 @@ teardown() {
 
   rm -f "$PLUGIN_DATA_HOST_ROOT/testpg2/LINKS"
   dokku --force "$PLUGIN_COMMAND_PREFIX:destroy" testpg2
+}
+
+@test "(generic:link) drops a stale build-phase network option left by older versions" {
+  dokku docker-options:add testapp build "--network=dokku.generic.testpg"
+  run dokku "$PLUGIN_COMMAND_PREFIX:link" testpg testapp
+  run dokku docker-options:report testapp --docker-options-build
+  assert_not_contains "$output" "--network=dokku.generic.testpg"
 }

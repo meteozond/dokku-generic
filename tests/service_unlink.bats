@@ -31,6 +31,14 @@ teardown() {
   assert_output ""
 }
 
+@test "(generic:unlink) removes a legacy build-phase network option" {
+  dokku docker-options:add testapp build "--network=dokku.generic.testpg"
+  run dokku "$PLUGIN_COMMAND_PREFIX:unlink" testpg testapp
+  assert_success
+  run dokku docker-options:report testapp --docker-options-build
+  assert_not_contains "$output" "--network=dokku.generic.testpg"
+}
+
 @test "(generic:unlink) error when not linked" {
   dokku "$PLUGIN_COMMAND_PREFIX:unlink" testpg testapp
   run dokku "$PLUGIN_COMMAND_PREFIX:unlink" testpg testapp

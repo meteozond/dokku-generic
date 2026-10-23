@@ -72,8 +72,11 @@ echo "$APP" >>"$LINKS_FILE"
 mkdir -p "$ROOT/APPS"
 printf '%s\n' "$ALIAS" >"$ROOT/APPS/$APP"
 
-# Add network to docker-options
-dokku docker-options:add "$APP" build,deploy,run "--network=$NETWORK"
+# Add network to docker-options. Deploy and run only: buildkit rejects custom
+# network modes at build time. The remove clears a build-phase entry left by
+# versions before 1.1.3.
+dokku docker-options:remove "$APP" build "--network=$NETWORK" >/dev/null 2>&1 || true
+dokku docker-options:add "$APP" deploy,run "--network=$NETWORK"
 
 # Build and apply env
 declare -a CONFIG_ARGS=()

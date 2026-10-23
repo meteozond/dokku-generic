@@ -7,6 +7,13 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-10-23
+
+### Fixed
+
+- `link` and `rename` add `--network=dokku.generic.<svc>` to the `deploy` and `run` docker-options phases only. The `build` phase broke Dockerfile app builds: `network mode "dokku.generic.<svc>" not supported by buildkit`.
+- `link` removes a stale build-phase network option left by earlier versions, so re-running `generic:link` on an already linked app repairs it. `unlink` and `rename` still remove it from `build,deploy,run`.
+
 ## [1.1.2] - 2026-09-12
 
 ### Fixed

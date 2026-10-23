@@ -130,7 +130,7 @@ fi
 for app in "${OLD_LINKS[@]}"; do
   # Swap network docker-option
   dokku docker-options:remove "$app" build,deploy,run "--network=$OLD_NET" >/dev/null 2>&1 || true
-  dokku docker-options:add "$app" build,deploy,run "--network=$NEW_NET"
+  dokku docker-options:add "$app" deploy,run "--network=$NEW_NET"
 
   # Single-pass config rewrite:
   #   - Keys named <OLD_ALIAS>_{HOST,PORT,URL} are renamed to <NEW_ALIAS>_* and their

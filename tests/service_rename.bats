@@ -39,6 +39,10 @@ teardown() {
   run dokku docker-options:report testapp
   assert_contains "$output" "--network=dokku.generic.newsvc"
   assert_not_contains "$output" "--network=dokku.generic.oldsvc"
+  run dokku docker-options:report testapp --docker-options-build
+  assert_not_contains "$output" "--network=dokku.generic"
+  run dokku docker-options:report testapp --docker-options-deploy
+  assert_contains "$output" "--network=dokku.generic.newsvc"
 }
 
 @test "(generic:rename) updates link config vars" {
