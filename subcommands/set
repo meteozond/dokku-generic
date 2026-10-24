@@ -107,12 +107,45 @@ acquire_service_lock "$SERVICE"
 
 ROOT="$(service_root "$SERVICE")"
 
+declare -a CHANGED=()
+
+# Writes a scalar file only when the content differs.
+# $1 file name, $2 new value, $3 printf format (CMD and ENTRYPOINT have no newline).
+set_scalar() {
+  local name="$1" value="$2" fmt="$3" current=""
+  [[ -f "$ROOT/$name" ]] && current="$(<"$ROOT/$name")"
+  [[ "$current" == "$value" ]] && return 0
+  # shellcheck disable=SC2059
+  printf "$fmt" "$value" >"$ROOT/$name"
+  CHANGED+=("$name")
+}
+
+# Appends a line to a list file unless it is already there.
+append_unique() {
+  local name="$1" line="$2"
+  if [[ -f "$ROOT/$name" ]] && grep -qxF -- "$line" "$ROOT/$name"; then
+    return 0
+  fi
+  printf '%s\n' "$line" >>"$ROOT/$name"
+  CHANGED+=("$name")
+}
+
+# Sets KEY=VALUE in an env file unless the same line is already there.
+set_env_unique() {
+  local name="$1" key="$2" val="$3"
+  if [[ -f "$ROOT/$name" ]] && grep -qxF -- "${key}=$(env_escape "$val")" "$ROOT/$name"; then
+    return 0
+  fi
+  env_set "$ROOT/$name" "$key" "$val"
+  CHANGED+=("$name")
+}
+
 # Apply scalar fields
-[[ -n "$NEW_IMAGE" ]] && printf '%s\n' "$NEW_IMAGE" >"$ROOT/IMAGE"
-[[ -n "$NEW_PORT" ]] && printf '%s\n' "$NEW_PORT" >"$ROOT/PORT"
-[[ -n "$NEW_SCHEME" ]] && printf '%s\n' "$NEW_SCHEME" >"$ROOT/SCHEME"
-[[ -n "$NEW_CMD" ]] && printf '%s' "$NEW_CMD" >"$ROOT/CMD"
-[[ -n "$NEW_ENTRYPOINT" ]] && printf '%s' "$NEW_ENTRYPOINT" >"$ROOT/ENTRYPOINT"
+[[ -n "$NEW_IMAGE" ]] && set_scalar IMAGE "$NEW_IMAGE" '%s\n'
+[[ -n "$NEW_PORT" ]] && set_scalar PORT "$NEW_PORT" '%s\n'
+[[ -n "$NEW_SCHEME" ]] && set_scalar SCHEME "$NEW_SCHEME" '%s\n'
+[[ -n "$NEW_CMD" ]] && set_scalar CMD "$NEW_CMD" '%s'
+[[ -n "$NEW_ENTRYPOINT" ]] && set_scalar ENTRYPOINT "$NEW_ENTRYPOINT" '%s'
 
 # Apply env / link-env
 for pair in "${TO_SET_ENV[@]}"; do
@@ -120,30 +153,31 @@ for pair in "${TO_SET_ENV[@]}"; do
   key="${pair%%=*}"
   val="${pair#*=}"
   [[ "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]] || dokku_log_fail "Invalid --env key: $key"
-  env_set "$ROOT/ENV" "$key" "$val"
+  set_env_unique ENV "$key" "$val"
 done
 for pair in "${TO_SET_LINK_ENV[@]}"; do
   [[ "$pair" != *=* ]] && dokku_log_fail "Invalid --link-env: $pair"
   key="${pair%%=*}"
   val="${pair#*=}"
   [[ "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]] || dokku_log_fail "Invalid --link-env key: $key"
-  env_set "$ROOT/LINK_ENV" "$key" "$val"
+  set_env_unique LINK_ENV "$key" "$val"
 done
 
-# Append mounts (skip duplicates already present in MOUNTS)
+# Append mounts and docker args (skip duplicates already present)
 for spec in "${TO_ADD_MOUNT[@]}"; do
   parse_mount_spec "$spec" >/dev/null || dokku_log_fail "Invalid --mount: $spec"
-  if [[ -f "$ROOT/MOUNTS" ]] && grep -qxF "$spec" "$ROOT/MOUNTS"; then
-    continue
-  fi
-  printf '%s\n' "$spec" >>"$ROOT/MOUNTS"
+  append_unique MOUNTS "$spec"
 done
-
-# Append docker args
 for da in "${TO_ADD_DOCKER_ARG[@]}"; do
-  printf '%s\n' "$da" >>"$ROOT/DOCKER_ARGS"
+  append_unique DOCKER_ARGS "$da"
 done
 
+if [[ ${#CHANGED[@]} -eq 0 ]]; then
+  dokku_log_info1 "No changes for $SERVICE"
+  exit 0
+fi
+
+dokku_log_info1 "Changed for $SERVICE: ${CHANGED[*]}"
 dokku_log_info1 "Updated $SERVICE state"
 
 # Restart if running (unless --no-restart was passed)

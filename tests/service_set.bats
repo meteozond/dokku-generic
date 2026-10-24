@@ -145,3 +145,35 @@ teardown() {
   assert_contains "$output" "FIRST=1"
   assert_contains "$output" "SECOND=2"
 }
+
+@test "(generic:set) same args twice: second run reports no changes and does not restart" {
+  args=(--image redis:7-alpine --port 6380 --scheme redis --cmd "redis-server --appendonly yes"
+    --mount /data --link-env URL=redis://%h --env FOO=bar --docker-arg --init)
+  run dokku "$PLUGIN_COMMAND_PREFIX:set" testset "${args[@]}"
+  assert_success
+  assert_contains "$output" "Changed for testset"
+  id_before=$(docker container inspect -f '{{.Id}}' dokku.generic.testset)
+  started_before=$(docker container inspect -f '{{.State.StartedAt}}' dokku.generic.testset)
+  sleep 1
+  run dokku "$PLUGIN_COMMAND_PREFIX:set" testset "${args[@]}"
+  assert_success
+  assert_contains "$output" "No changes for testset"
+  assert_not_contains "$output" "Restarting"
+  id_after=$(docker container inspect -f '{{.Id}}' dokku.generic.testset)
+  started_after=$(docker container inspect -f '{{.State.StartedAt}}' dokku.generic.testset)
+  [[ "$id_before" == "$id_after" ]] || flunk "container was recreated"
+  [[ "$started_before" == "$started_after" ]] || flunk "container was restarted"
+}
+
+@test "(generic:set) a changed arg after an identical run still applies and restarts" {
+  dokku "$PLUGIN_COMMAND_PREFIX:set" testset --port 6380 --env FOO=bar
+  id_before=$(docker container inspect -f '{{.Id}}' dokku.generic.testset)
+  run dokku "$PLUGIN_COMMAND_PREFIX:set" testset --port 6381 --env FOO=bar
+  assert_success
+  assert_contains "$output" "Changed for testset: PORT"
+  assert_contains "$output" "Restarting"
+  run cat "$PLUGIN_DATA_HOST_ROOT/testset/PORT"
+  assert_output "6381"
+  id_after=$(docker container inspect -f '{{.Id}}' dokku.generic.testset)
+  [[ "$id_before" != "$id_after" ]] || flunk "expected container to be recreated"
+}

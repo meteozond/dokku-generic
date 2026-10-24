@@ -7,6 +7,13 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.7] - 2026-10-24
+
+### Changed
+
+- `generic:set` compares each requested value with the stored one. If nothing differs, it writes nothing, does not restart the service, prints `No changes for <service>` and exits 0. Otherwise it prints the changed fields and restarts as before.
+- Repeated `--docker-arg` values are no longer appended twice.
+
 ## [1.1.6] - 2026-10-24
 
 ### Fixed
